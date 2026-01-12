@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
 
         try {
             // TODO: Implementar chamada à API de recuperação de senha
-            // await api.post('/auth/forgot-password', { email });
+            // await api.post('/api/v1/auth/forgot-password', { email });
             
             // Simula sucesso por enquanto
             await new Promise(resolve => setTimeout(resolve, 1000));
