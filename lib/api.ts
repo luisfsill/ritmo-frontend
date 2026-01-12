@@ -89,6 +89,17 @@ function isDemoMode(): boolean {
   return process.env.NODE_ENV === 'development' && !!token?.includes('demo');
 }
 
+function assertV1Endpoint(endpoint: string): void {
+  const trimmed = endpoint.trim();
+  if (!trimmed.startsWith('/')) {
+    throw new Error(`Endpoint inválido: "${endpoint}"`);
+  }
+  if (trimmed === '/api/v1' || trimmed.startsWith('/api/v1/')) {
+    return;
+  }
+  throw new Error(`Endpoint não-versionado (use /api/v1/...): "${endpoint}"`);
+}
+
 // Error handling
 function handleApiError(status: number, data: unknown): never {
   let message = 'Ocorreu um erro inesperado';
@@ -152,7 +163,7 @@ async function refreshAccessToken(): Promise<boolean> {
   if (!currentRefreshToken) return false;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -197,6 +208,8 @@ export async function apiRequest<T>(
   if (!API_BASE_URL) {
     throw new ApiConfigError();
   }
+
+  assertV1Endpoint(endpoint);
 
   const {
     method = 'GET',
