@@ -40,14 +40,10 @@ interface CardData {
 }
 
 export default function DemoPage() {
-  const { theme, setTheme, mounted } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [currentCard, setCurrentCard] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isAnimating, setIsAnimating] = useState(false);
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
 
   const cards: CardData[] = [
     // Card 1: Elevator Pitch
@@ -362,10 +358,6 @@ export default function DemoPage() {
     };
   }, [goToNext, goToPrev]);
 
-  if (!mounted) {
-    return null;
-  }
-
   const card = cards[currentCard];
   const progress = ((currentCard + 1) / cards.length) * 100;
 
@@ -393,7 +385,7 @@ export default function DemoPage() {
             className={styles.themeToggle}
             aria-label="Alternar tema"
           >
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            {resolvedTheme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
           <Link href="/register" className={styles.skipButton}>
             Pular <ArrowRight size={16} />
