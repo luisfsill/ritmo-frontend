@@ -6,32 +6,25 @@ import { ArrowLeft, Calendar, Clock, User, Scissors } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Input } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
+import { getCatalog, type CatalogService, type CatalogStaff } from '@/lib/catalog';
 import styles from './new.module.css';
-
-interface Service {
-    id: string;
-    name: string;
-    duration_minutes: number;
-    price: number;
-}
-
-interface Staff {
-    id: string;
-    name: string;
-    is_active: boolean;
-}
 
 interface Client {
     id: string;
-    name: string;
-    phone: string;
+    full_name: string;
+    phone: string | null;
 }
 
 interface AvailableSlot {
     start_at: string;
     end_at: string;
     staff_id: string;
-    staff_name: string;
+}
+
+interface AvailabilityResponse {
+    service_id: string;
+    date: string;
+    slots: AvailableSlot[];
 }
 
 export default function NewAppointmentPage() {
@@ -41,14 +34,14 @@ export default function NewAppointmentPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Data
-    const [services, setServices] = useState<Service[]>([]);
-    const [staff, setStaff] = useState<Staff[]>([]);
+    const [services, setServices] = useState<CatalogService[]>([]);
+    const [staff, setStaff] = useState<CatalogStaff[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
 
     // Selection
-    const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+    const [selectedService, setSelectedService] = useState<CatalogService | null>(null);
+    const [selectedStaff, setSelectedStaff] = useState<CatalogStaff | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -63,13 +56,19 @@ export default function NewAppointmentPage() {
         const loadData = async () => {
             setIsLoading(true);
             try {
-                const [servicesData, staffData, clientsData] = await Promise.all([
-                    api.get<Service[]>('/services').catch(() => []),
-                    api.get<Staff[]>('/staff').catch(() => []),
-                    api.get<Client[]>('/clients').catch(() => [])
+                const [catalog, clientsData] = await Promise.all([
+                    getCatalog().catch(() => null),
+                    api.get<Client[]>('/api/v1/clients').catch(() => [])
                 ]);
-                setServices(servicesData || []);
-                setStaff((staffData || []).filter(s => s.is_active));
+
+                if (catalog) {
+                    setServices((catalog.services || []).filter(s => s.is_active));
+                    setStaff((catalog.staff || []).filter(s => s.is_active));
+                } else {
+                    setServices([]);
+                    setStaff([]);
+                }
+
                 setClients(clientsData || []);
             } catch (err) {
                 console.error('Erro ao carregar dados:', err);
@@ -97,8 +96,8 @@ export default function NewAppointmentPage() {
                     params.append('staff_id', selectedStaff.id);
                 }
 
-                const slots = await api.get<AvailableSlot[]>(`/availability?${params.toString()}`);
-                setAvailableSlots(slots || []);
+                const availability = await api.get<AvailabilityResponse>(`/api/v1/availability?${params.toString()}`);
+                setAvailableSlots(availability?.slots || []);
             } catch (err) {
                 console.error('Erro ao carregar disponibilidade:', err);
                 setAvailableSlots([]);
@@ -117,8 +116,8 @@ export default function NewAppointmentPage() {
 
             // Create new client if needed
             if (isNewClient && newClientName && newClientPhone) {
-                const newClient = await api.post<Client>('/clients', {
-                    name: newClientName,
+                const newClient = await api.post<Client>('/api/v1/clients', {
+                    full_name: newClientName,
                     phone: newClientPhone
                 });
                 clientId = newClient.id;
@@ -131,7 +130,7 @@ export default function NewAppointmentPage() {
             }
 
             // Create appointment
-            await api.post('/appointments', {
+            await api.post('/api/v1/appointments', {
                 client_id: clientId,
                 service_id: selectedService.id,
                 staff_id: selectedSlot.staff_id,
@@ -164,11 +163,19 @@ export default function NewAppointmentPage() {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
     };
 
+    const formatPriceFromCents = (priceCents: number) => {
+        return formatPrice(priceCents / 100);
+    };
+
     const formatDuration = (minutes: number) => {
         if (minutes < 60) return `${minutes} min`;
         const hours = Math.floor(minutes / 60);
         const mins = minutes % 60;
         return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+    };
+
+    const getStaffDisplayName = (staffId: string) => {
+        return staff.find(s => s.id === staffId)?.display_name ?? '—';
     };
 
     const canProceed = () => {
@@ -241,7 +248,7 @@ export default function NewAppointmentPage() {
                                         <div className={styles.serviceName}>{service.name}</div>
                                         <div className={styles.serviceMeta}>
                                             <span><Clock size={14} /> {formatDuration(service.duration_minutes)}</span>
-                                            <span>{formatPrice(service.price)}</span>
+                                            <span>{formatPriceFromCents(service.price_cents)}</span>
                                         </div>
                                     </button>
                                 ))}
@@ -268,7 +275,7 @@ export default function NewAppointmentPage() {
                                             className={`${styles.staffCard} ${selectedStaff?.id === member.id ? styles.selected : ''}`}
                                             onClick={() => setSelectedStaff(member)}
                                         >
-                                            {member.name}
+                                            {member.display_name}
                                         </button>
                                     ))}
                                 </div>
@@ -318,7 +325,7 @@ export default function NewAppointmentPage() {
                                                 onClick={() => setSelectedSlot(slot)}
                                             >
                                                 <span className={styles.slotTime}>{formatTime(slot.start_at)}</span>
-                                                <span className={styles.slotStaff}>{slot.staff_name}</span>
+                                                <span className={styles.slotStaff}>{getStaffDisplayName(slot.staff_id)}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -365,8 +372,8 @@ export default function NewAppointmentPage() {
                                             className={`${styles.clientCard} ${selectedClient?.id === client.id ? styles.selected : ''}`}
                                             onClick={() => setSelectedClient(client)}
                                         >
-                                            <span className={styles.clientName}>{client.name}</span>
-                                            <span className={styles.clientPhone}>{client.phone}</span>
+                                            <span className={styles.clientName}>{client.full_name}</span>
+                                            <span className={styles.clientPhone}>{client.phone ?? '-'}</span>
                                         </button>
                                     ))
                                 )}
@@ -405,11 +412,11 @@ export default function NewAppointmentPage() {
                             </div>
                             <div className={styles.summaryItem}>
                                 <span>Profissional:</span>
-                                <strong>{selectedSlot?.staff_name}</strong>
+                                <strong>{selectedSlot ? getStaffDisplayName(selectedSlot.staff_id) : '—'}</strong>
                             </div>
                             <div className={styles.summaryItem}>
                                 <span>Valor:</span>
-                                <strong>{selectedService && formatPrice(selectedService.price)}</strong>
+                                <strong>{selectedService && formatPriceFromCents(selectedService.price_cents)}</strong>
                             </div>
                         </div>
                     </div>
