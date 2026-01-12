@@ -1,32 +1,66 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Calendar, Clock, User, MoreVertical, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
+import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './appointments.module.css';
 
 interface Appointment {
     id: string;
-    client_name: string;
-    client_phone: string;
-    service_name: string;
-    staff_name: string;
+    staff_id: string;
+    client_id: string;
+    service_id: string;
     start_at: string;
     end_at: string;
-    status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+    status: string;
+    price_cents: number;
+    source: string;
 }
 
-const statusConfig = {
-    scheduled: { label: 'Agendado', icon: Clock, color: 'warning' },
-    confirmed: { label: 'Confirmado', icon: CheckCircle, color: 'success' },
-    completed: { label: 'Concluído', icon: CheckCircle, color: 'success' },
-    cancelled: { label: 'Cancelado', icon: XCircle, color: 'error' },
-    no_show: { label: 'Não compareceu', icon: AlertCircle, color: 'error' },
+type StatusConfig = {
+    label: string;
+    icon: LucideIcon;
+    color: 'success' | 'warning' | 'error';
 };
+
+const statusConfig = {
+    booked: { label: 'Agendado', icon: Clock, color: 'warning' },
+    confirmed: { label: 'Confirmado', icon: CheckCircle, color: 'success' },
+    in_progress: { label: 'Em andamento', icon: Clock, color: 'warning' },
+    completed: { label: 'Concluído', icon: CheckCircle, color: 'success' },
+    canceled: { label: 'Cancelado', icon: XCircle, color: 'error' },
+    no_show: { label: 'Não compareceu', icon: AlertCircle, color: 'error' },
+} satisfies Record<string, StatusConfig>;
+
+type KnownAppointmentStatus = keyof typeof statusConfig;
+
+const statusAliases: Record<string, KnownAppointmentStatus> = {
+    scheduled: 'booked',
+    cancelled: 'canceled',
+};
+
+const getStatusPresentation = (rawStatus: string): StatusConfig => {
+    const normalized = statusAliases[rawStatus] ?? rawStatus;
+
+    if (normalized in statusConfig) {
+        return statusConfig[normalized as KnownAppointmentStatus];
+    }
+
+    return { label: rawStatus || 'Desconhecido', icon: AlertCircle, color: 'warning' };
+};
+
+interface Client {
+    id: string;
+    full_name: string;
+    phone: string | null;
+}
 
 export default function AppointmentsPage() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+    const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -40,8 +74,15 @@ export default function AppointmentsPage() {
     const loadAppointments = async () => {
         setIsLoading(true);
         try {
-            const data = await api.get<Appointment[]>(`/dashboard/day?date=${selectedDate}`);
+            const [data, catalogData, clientsData] = await Promise.all([
+                api.get<Appointment[]>(`/api/v1/dashboard/day?date=${selectedDate}`),
+                getCatalog().catch(() => null),
+                api.get<Client[]>('/api/v1/clients').catch(() => []),
+            ]);
+
             setAppointments(data);
+            setCatalog(catalogData);
+            setClients(clientsData || []);
             setError(null);
         } catch (err) {
             const apiError = err as ApiError;
@@ -59,8 +100,8 @@ export default function AppointmentsPage() {
     const handleCancel = async (id: string) => {
         if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
         try {
-            await api.post(`/appointments/${id}/cancel`);
-            setAppointments(appointments.map(a => a.id === id ? { ...a, status: 'cancelled' as const } : a));
+            await api.post(`/api/v1/appointments/${id}/cancel`);
+            setAppointments(appointments.map(a => a.id === id ? { ...a, status: 'canceled' } : a));
         } catch (err) {
             const apiError = err as ApiError;
             
@@ -80,10 +121,29 @@ export default function AppointmentsPage() {
         };
     };
 
+    const getServiceName = (serviceId: string) => {
+        return catalog?.services.find(s => s.id === serviceId)?.name ?? serviceId;
+    };
+
+    const getStaffName = (staffId: string) => {
+        return catalog?.staff.find(s => s.id === staffId)?.display_name ?? staffId;
+    };
+
+    const getClientInfo = (clientId: string) => {
+        const client = clients.find(c => c.id === clientId);
+        return {
+            name: client?.full_name ?? clientId,
+            phone: client?.phone ?? '-',
+        };
+    };
+
     const filteredAppointments = appointments.filter(apt => {
-        const matchesSearch = apt.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            apt.service_name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || apt.status === statusFilter;
+        const clientName = getClientInfo(apt.client_id).name;
+        const serviceName = getServiceName(apt.service_id);
+        const matchesSearch = clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            serviceName.toLowerCase().includes(searchQuery.toLowerCase());
+        const normalizedStatus = statusAliases[apt.status] ?? apt.status;
+        const matchesStatus = statusFilter === 'all' || normalizedStatus === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
@@ -119,10 +179,11 @@ export default function AppointmentsPage() {
                     className={styles.filterSelect}
                 >
                     <option value="all">Todos os status</option>
-                    <option value="scheduled">Agendado</option>
+                    <option value="booked">Agendado</option>
                     <option value="confirmed">Confirmado</option>
+                    <option value="in_progress">Em andamento</option>
                     <option value="completed">Concluído</option>
-                    <option value="cancelled">Cancelado</option>
+                    <option value="canceled">Cancelado</option>
                     <option value="no_show">Não compareceu</option>
                 </select>
             </div>
@@ -159,8 +220,10 @@ export default function AppointmentsPage() {
                         <tbody>
                             {filteredAppointments.map((apt) => {
                                 const { date, time } = formatDateTime(apt.start_at);
-                                const status = statusConfig[apt.status];
+                                const normalizedStatus = statusAliases[apt.status] ?? apt.status;
+                                const status = getStatusPresentation(apt.status);
                                 const StatusIcon = status.icon;
+                                const client = getClientInfo(apt.client_id);
 
                                 return (
                                     <tr key={apt.id}>
@@ -172,12 +235,12 @@ export default function AppointmentsPage() {
                                         </td>
                                         <td>
                                             <div className={styles.client}>
-                                                <span className={styles.clientName}>{apt.client_name}</span>
-                                                <span className={styles.clientPhone}>{apt.client_phone}</span>
+                                                <span className={styles.clientName}>{client.name}</span>
+                                                <span className={styles.clientPhone}>{client.phone}</span>
                                             </div>
                                         </td>
-                                        <td>{apt.service_name}</td>
-                                        <td>{apt.staff_name}</td>
+                                        <td>{getServiceName(apt.service_id)}</td>
+                                        <td>{getStaffName(apt.staff_id)}</td>
                                         <td>
                                             <span className={`${styles.statusBadge} ${styles[status.color]}`}>
                                                 <StatusIcon size={14} />
@@ -185,7 +248,7 @@ export default function AppointmentsPage() {
                                             </span>
                                         </td>
                                         <td>
-                                            {apt.status === 'scheduled' || apt.status === 'confirmed' ? (
+                                            {normalizedStatus === 'booked' || normalizedStatus === 'confirmed' ? (
                                                 <button className={styles.actionButton} onClick={() => handleCancel(apt.id)}>
                                                     <XCircle size={16} />
                                                 </button>
