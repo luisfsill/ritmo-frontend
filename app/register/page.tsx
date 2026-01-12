@@ -51,7 +51,7 @@ export default function RegisterPage() {
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-|-$/g, '');
 
-            await api.post<TokenPair>('/auth/register', {
+            await api.post<TokenPair>('/api/v1/auth/register', {
                 email: data.email,
                 password: data.password,
                 slug,
