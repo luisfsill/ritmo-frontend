@@ -285,12 +285,19 @@
     background-color: var(--color-success-subtle);
 }
 
-.statusBadge.pending {
+.statusBadge.booked,
+.statusBadge.in_progress {
     color: var(--color-warning);
     background-color: var(--color-warning-subtle);
 }
 
-.statusBadge.cancelled {
+.statusBadge.completed {
+    color: var(--color-success);
+    background-color: var(--color-success-subtle);
+}
+
+.statusBadge.canceled,
+.statusBadge.no_show {
     color: var(--color-error);
     background-color: var(--color-error-subtle);
 }
