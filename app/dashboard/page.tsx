@@ -1,43 +1,47 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Users, DollarSign, Clock, TrendingUp, TrendingDown, ArrowRight, Loader2 } from 'lucide-react';
+import { Calendar, Users, DollarSign, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './dashboard.module.css';
 
 interface DashboardSummary {
-    appointments_today: number;
-    appointments_today_change: number;
-    active_clients: number;
-    active_clients_change: number;
-    revenue_month: number;
-    revenue_month_change: number;
-    no_show_rate: number;
-    no_show_rate_change: number;
+    bookings_last_days: number;
+    upcoming: number;
+    clients: number;
 }
 
 interface Appointment {
     id: string;
+    staff_id: string;
+    client_id: string;
+    service_id: string;
     start_at: string;
-    client: {
-        id: string;
-        name: string;
-    };
-    service: {
-        id: string;
-        name: string;
-    };
-    staff: {
-        id: string;
-        name: string;
-    };
-    status: string;
+    end_at: string;
+    status: 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'canceled' | 'no_show';
+    price_cents: number;
+    source: string;
+}
+
+interface RevenueReport {
+    days: number;
+    revenue_cents: number;
+}
+
+interface Client {
+    id: string;
+    full_name: string;
+    phone: string | null;
 }
 
 export default function DashboardPage() {
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
     const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+    const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [revenue, setRevenue] = useState<RevenueReport | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -49,15 +53,21 @@ export default function DashboardPage() {
 
                 const today = new Date().toISOString().split('T')[0];
                 
-                const [summaryData, appointmentsData] = await Promise.all([
-                    api.get<DashboardSummary>('/dashboard/summary').catch(() => null),
-                    api.get<Appointment[]>(`/dashboard/day?date=${today}`).catch(() => [])
+                const [summaryData, appointmentsData, catalogData, clientsData, revenueData] = await Promise.all([
+                    api.get<DashboardSummary>('/api/v1/dashboard/summary').catch(() => null),
+                    api.get<Appointment[]>(`/api/v1/dashboard/day?date=${today}`).catch(() => []),
+                    getCatalog().catch(() => null),
+                    api.get<Client[]>('/api/v1/clients').catch(() => []),
+                    api.get<RevenueReport>('/api/v1/dashboard/analytics/revenue?days=30').catch(() => null),
                 ]);
 
                 if (summaryData) {
                     setSummary(summaryData);
                 }
                 setTodayAppointments(appointmentsData || []);
+                setCatalog(catalogData);
+                setClients(clientsData || []);
+                setRevenue(revenueData);
             } catch (err) {
                 const error = err as { message?: string; status?: number };
                 
@@ -83,40 +93,49 @@ export default function DashboardPage() {
         return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     };
 
-    const formatChange = (value: number | undefined | null, isPercentage: boolean = false) => {
-        if (value === undefined || value === null) return '+0';
-        const formatted = isPercentage ? `${value.toFixed(1)}%` : value.toString();
-        return value >= 0 ? `+${formatted}` : formatted;
+    const getClientName = (clientId: string) => {
+        return clients.find(c => c.id === clientId)?.full_name ?? 'Cliente';
+    };
+
+    const getServiceName = (serviceId: string) => {
+        return catalog?.services.find(s => s.id === serviceId)?.name ?? 'Serviço';
+    };
+
+    const getStaffName = (staffId: string) => {
+        return catalog?.staff.find(s => s.id === staffId)?.display_name ?? 'Profissional';
+    };
+
+    const getStatusLabel = (status: Appointment['status']) => {
+        switch (status) {
+            case 'booked': return 'Agendado';
+            case 'confirmed': return 'Confirmado';
+            case 'in_progress': return 'Em andamento';
+            case 'completed': return 'Concluído';
+            case 'canceled': return 'Cancelado';
+            case 'no_show': return 'Não compareceu';
+        }
     };
 
     const stats = summary ? [
         {
-            label: 'Agendamentos Hoje',
-            value: (summary.appointments_today ?? 0).toString(),
-            change: formatChange(summary.appointments_today_change),
-            changeType: (summary.appointments_today_change ?? 0) >= 0 ? 'positive' : 'negative',
+            label: 'Agendamentos (últimos 7 dias)',
+            value: (summary.bookings_last_days ?? 0).toString(),
             icon: Calendar,
         },
         {
-            label: 'Clientes Ativos',
-            value: (summary.active_clients ?? 0).toString(),
-            change: formatChange(summary.active_clients_change),
-            changeType: (summary.active_clients_change ?? 0) >= 0 ? 'positive' : 'negative',
+            label: 'Próximos agendamentos',
+            value: (summary.upcoming ?? 0).toString(),
+            icon: Calendar,
+        },
+        {
+            label: 'Clientes',
+            value: (summary.clients ?? 0).toString(),
             icon: Users,
         },
         {
-            label: 'Receita do Mês',
-            value: formatCurrency(summary.revenue_month ?? 0),
-            change: formatChange(summary.revenue_month_change, true),
-            changeType: (summary.revenue_month_change ?? 0) >= 0 ? 'positive' : 'negative',
+            label: 'Receita (30 dias)',
+            value: formatCurrency(((revenue?.revenue_cents ?? 0) / 100)),
             icon: DollarSign,
-        },
-        {
-            label: 'Taxa de No-Show',
-            value: `${(summary.no_show_rate ?? 0).toFixed(1)}%`,
-            change: formatChange(summary.no_show_rate_change, true),
-            changeType: (summary.no_show_rate_change ?? 0) <= 0 ? 'positive' : 'negative',
-            icon: Clock,
         },
     ] : [];
 
@@ -165,14 +184,6 @@ export default function DashboardPage() {
                                     <div className={styles.statIconWrapper}>
                                         <Icon size={20} />
                                     </div>
-                                    <div className={`${styles.statChange} ${styles[stat.changeType]}`}>
-                                        {stat.changeType === 'positive' ? (
-                                            <TrendingUp size={14} />
-                                        ) : (
-                                            <TrendingDown size={14} />
-                                        )}
-                                        {stat.change}
-                                    </div>
                                 </div>
                                 <div className={styles.statValue}>{stat.value}</div>
                                 <div className={styles.statLabel}>{stat.label}</div>
@@ -201,16 +212,14 @@ export default function DashboardPage() {
                                 <div key={apt.id} className={styles.appointmentItem}>
                                     <div className={styles.appointmentTime}>{formatTime(apt.start_at)}</div>
                                     <div className={styles.appointmentDetails}>
-                                        <div className={styles.appointmentClient}>{apt.client?.name || 'Cliente'}</div>
+                                        <div className={styles.appointmentClient}>{getClientName(apt.client_id)}</div>
                                         <div className={styles.appointmentService}>
-                                            {apt.service?.name || 'Serviço'} • {apt.staff?.name || 'Profissional'}
+                                            {getServiceName(apt.service_id)} • {getStaffName(apt.staff_id)}
                                         </div>
                                     </div>
                                     <div className={styles.appointmentStatus}>
                                         <span className={`${styles.statusBadge} ${styles[apt.status]}`}>
-                                            {apt.status === 'confirmed' ? 'Confirmado' : 
-                                             apt.status === 'pending' ? 'Pendente' :
-                                             apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                                            {getStatusLabel(apt.status)}
                                         </span>
                                     </div>
                                 </div>
