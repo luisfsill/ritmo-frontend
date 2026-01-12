@@ -11,7 +11,11 @@ interface Service {
     name: string;
     description: string | null;
     duration_minutes: number;
-    price: number;
+    buffer_before_minutes: number;
+    buffer_after_minutes: number;
+    price_cents: number;
+    requires_deposit: boolean;
+    deposit_cents: number | null;
     is_active: boolean;
 }
 
@@ -31,7 +35,7 @@ export default function ServicesPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await api.get<Service[]>('/services');
+            const data = await api.get<Service[]>('/api/v1/services');
             setServices(data);
             setError(null);
         } catch (err) {
@@ -51,7 +55,7 @@ export default function ServicesPage() {
         if (!confirm('Tem certeza que deseja excluir este serviço?')) return;
 
         try {
-            await api.delete(`/services/${id}`);
+            await api.delete(`/api/v1/services/${id}`);
             setServices(services.filter(s => s.id !== id));
         } catch (err) {
             const apiError = err as ApiError;
@@ -80,6 +84,10 @@ export default function ServicesPage() {
             style: 'currency',
             currency: 'BRL',
         }).format(price);
+    };
+
+    const formatPriceFromCents = (priceCents: number) => {
+        return formatPrice(priceCents / 100);
     };
 
     return (
@@ -166,7 +174,7 @@ export default function ServicesPage() {
                                 </div>
                                 <div className={styles.metaItem}>
                                     <DollarSign size={16} />
-                                    <span>{formatPrice(service.price)}</span>
+                                    <span>{formatPriceFromCents(service.price_cents)}</span>
                                 </div>
                             </div>
 
