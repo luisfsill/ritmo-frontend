@@ -28,15 +28,11 @@ import { useTheme } from '@/lib/theme-context';
 import styles from './page.module.css';
 
 export default function LandingPage() {
-  const { theme, setTheme, mounted } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentCard, setCurrentCard] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isAnimating, setIsAnimating] = useState(false);
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
 
   // Cards da demonstração - Fluxo refatorado
   const demoCards = [
@@ -258,11 +254,6 @@ export default function LandingPage() {
     };
   }, [mobileMenuOpen]);
 
-  // Evitar problemas de hidratação - não renderizar até montar
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <div className={styles.page}>
       {/* Header */}
@@ -287,7 +278,7 @@ export default function LandingPage() {
               className={styles.themeToggle}
               aria-label="Alternar tema"
             >
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              {resolvedTheme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
             <Link href="/login" className={styles.loginButton}>
               Entrar
