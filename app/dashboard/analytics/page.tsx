@@ -5,40 +5,35 @@ import { TrendingUp, TrendingDown, Calendar, Users, DollarSign, Clock, BarChart3
 import { api } from '@/lib/api';
 import styles from './analytics.module.css';
 
-interface RevenueData {
-    period: string;
-    value: number;
+interface RevenueReport {
+    days: number;
+    revenue_cents: number;
 }
 
-interface OccupancyData {
-    day: string;
-    value: number;
+interface OccupancyReport {
+    days: number;
+    appointments_total: number;
+    appointments_completed: number;
 }
 
-interface ServiceMixData {
-    name: string;
+interface ServiceMixItem {
+    service: string;
     count: number;
-    revenue: number;
 }
 
-interface AnalyticsSummary {
-    total_revenue: number;
-    revenue_change: number;
-    total_appointments: number;
-    appointments_change: number;
-    new_clients: number;
-    new_clients_change: number;
-    occupancy_rate: number;
-    occupancy_change: number;
+interface DashboardSummary {
+    bookings_last_days: number;
+    upcoming: number;
+    clients: number;
 }
 
 export default function AnalyticsPage() {
     const [period, setPeriod] = useState('month');
     const [loading, setLoading] = useState(true);
-    const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-    const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);
-    const [topServices, setTopServices] = useState<ServiceMixData[]>([]);
-    const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+    const [revenue, setRevenue] = useState<RevenueReport | null>(null);
+    const [occupancy, setOccupancy] = useState<OccupancyReport | null>(null);
+    const [topServices, setTopServices] = useState<ServiceMixItem[]>([]);
+    const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
     const getDaysFromPeriod = (p: string) => {
         switch (p) {
@@ -57,15 +52,14 @@ export default function AnalyticsPage() {
 
             try {
                 const [revenueRes, occupancyRes, serviceMixRes, summaryRes] = await Promise.all([
-                    api.get<RevenueData[]>(`/dashboard/analytics/revenue?days=${days}`).catch(() => []),
-                    api.get<OccupancyData[]>(`/dashboard/analytics/occupancy?days=${days}`).catch(() => []),
-                    api.get<ServiceMixData[]>(`/dashboard/analytics/service-mix?days=${days}`).catch(() => []),
-                    api.get<AnalyticsSummary>(`/dashboard/summary?days=${days}`).catch(() => null)
+                    api.get<RevenueReport>(`/api/v1/dashboard/analytics/revenue?days=${days}`).catch(() => null),
+                    api.get<OccupancyReport>(`/api/v1/dashboard/analytics/occupancy?days=${days}`).catch(() => null),
+                    api.get<ServiceMixItem[]>(`/api/v1/dashboard/analytics/service-mix?days=${days}`).catch(() => []),
+                    api.get<DashboardSummary>(`/api/v1/dashboard/summary?days=${days}`).catch(() => null)
                 ]);
 
-                // Garante que são arrays (API pode retornar objeto ou null)
-                setRevenueData(Array.isArray(revenueRes) ? revenueRes : []);
-                setOccupancyData(Array.isArray(occupancyRes) ? occupancyRes : []);
+                setRevenue(revenueRes);
+                setOccupancy(occupancyRes);
                 setTopServices(Array.isArray(serviceMixRes) ? serviceMixRes : []);
                 setSummary(summaryRes && typeof summaryRes === 'object' ? summaryRes : null);
             } catch (err) {
@@ -79,45 +73,47 @@ export default function AnalyticsPage() {
         fetchAnalytics();
     }, [period]);
 
-    const formatCurrency = (value: number | undefined | null) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
+    const formatCurrency = (valueReais: number | undefined | null) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valueReais ?? 0);
     };
 
-    const formatChange = (value: number | undefined | null) => {
-        const num = value ?? 0;
-        return `${num >= 0 ? '+' : ''}${num.toFixed(1)}%`;
-    };
+    const revenueValue = (revenue?.revenue_cents ?? 0) / 100;
+    const occupancyRate = occupancy && occupancy.appointments_total > 0
+        ? (occupancy.appointments_completed / occupancy.appointments_total) * 100
+        : 0;
 
+    const revenueData = revenue ? [{ period: `${revenue.days}d`, value: revenueValue }] : [];
+    const occupancyData = occupancy ? [{ day: `${occupancy.days}d`, value: occupancyRate }] : [];
     const maxRevenue = revenueData.length > 0 ? Math.max(...revenueData.map(d => d.value)) : 1;
-    const maxOccupancy = occupancyData.length > 0 ? Math.max(...occupancyData.map(d => d.value)) : 100;
+    const maxOccupancy = 100;
 
     const metrics = summary ? [
         { 
             label: 'Receita Total', 
-            value: formatCurrency(summary.total_revenue), 
-            change: formatChange(summary.revenue_change), 
-            positive: (summary.revenue_change ?? 0) >= 0, 
+            value: formatCurrency(revenueValue), 
+            change: '—', 
+            positive: true, 
             icon: DollarSign 
         },
         { 
             label: 'Agendamentos', 
-            value: (summary.total_appointments ?? 0).toString(), 
-            change: formatChange(summary.appointments_change), 
-            positive: (summary.appointments_change ?? 0) >= 0, 
+            value: (summary.bookings_last_days ?? 0).toString(), 
+            change: '—', 
+            positive: true, 
             icon: Calendar 
         },
         { 
-            label: 'Novos Clientes', 
-            value: (summary.new_clients ?? 0).toString(), 
-            change: formatChange(summary.new_clients_change), 
-            positive: (summary.new_clients_change ?? 0) >= 0, 
+            label: 'Clientes', 
+            value: (summary.clients ?? 0).toString(), 
+            change: '—', 
+            positive: true, 
             icon: Users 
         },
         { 
             label: 'Taxa de Ocupação', 
-            value: `${(summary.occupancy_rate ?? 0).toFixed(1)}%`, 
-            change: formatChange(summary.occupancy_change), 
-            positive: (summary.occupancy_change ?? 0) >= 0, 
+            value: `${occupancyRate.toFixed(1)}%`, 
+            change: '—', 
+            positive: true, 
             icon: Clock 
         },
     ] : [];
@@ -232,15 +228,12 @@ export default function AnalyticsPage() {
                     ) : (
                         <div className={styles.servicesList}>
                             {topServices.map((service, index) => (
-                                <div key={service.name} className={styles.serviceItem}>
+                                <div key={service.service} className={styles.serviceItem}>
                                     <div className={styles.serviceRank}>{index + 1}</div>
                                     <div className={styles.serviceInfo}>
-                                        <span className={styles.serviceName}>{service.name}</span>
+                                        <span className={styles.serviceName}>{service.service}</span>
                                         <span className={styles.serviceCount}>{service.count} agendamentos</span>
                                     </div>
-                                    <span className={styles.serviceRevenue}>
-                                        {formatCurrency(service.revenue)}
-                                    </span>
                                 </div>
                             ))}
                         </div>
