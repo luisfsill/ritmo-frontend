@@ -1,19 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Mail, Phone, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Search, Trash2, Mail, Phone, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './clients.module.css';
 
 interface Client {
     id: string;
-    name: string;
+    full_name: string;
+    status: string;
+    whatsapp_handle: string | null;
+    tags: string[] | null;
     email: string | null;
-    phone: string;
-    created_at: string;
-    total_appointments?: number;
-    last_visit?: string;
+    phone: string | null;
 }
 
 export default function ClientsPage() {
@@ -30,7 +30,7 @@ export default function ClientsPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await api.get<Client[]>('/clients');
+            const data = await api.get<Client[]>('/api/v1/clients');
             setClients(data);
             setError(null);
         } catch (err) {
@@ -49,7 +49,7 @@ export default function ClientsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este cliente? Esta ação é irreversível.')) return;
         try {
-            await api.delete(`/clients/${id}`);
+            await api.delete(`/api/v1/clients/${id}`, { confirm: true });
             setClients(clients.filter(c => c.id !== id));
         } catch (err) {
             const apiError = err as ApiError;
@@ -63,14 +63,11 @@ export default function ClientsPage() {
     };
 
     const filteredClients = clients.filter(client =>
-        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.phone.includes(searchQuery) ||
-        (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase()))
+        client.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (client.phone ?? '').includes(searchQuery) ||
+        (client.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (client.whatsapp_handle ?? '').includes(searchQuery)
     );
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('pt-BR');
-    };
 
     return (
         <div className={styles.page}>
@@ -123,8 +120,8 @@ export default function ClientsPage() {
                             <tr>
                                 <th>Nome</th>
                                 <th>Contato</th>
-                                <th>Desde</th>
-                                <th>Agendamentos</th>
+                                <th>Status</th>
+                                <th>Tags</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -133,23 +130,24 @@ export default function ClientsPage() {
                                 <tr key={client.id}>
                                     <td>
                                         <div className={styles.clientName}>
-                                            <div className={styles.avatar}>{client.name.charAt(0).toUpperCase()}</div>
-                                            <span>{client.name}</span>
+                                            <div className={styles.avatar}>{client.full_name.charAt(0).toUpperCase()}</div>
+                                            <span>{client.full_name}</span>
                                         </div>
                                     </td>
                                     <td>
                                         <div className={styles.contact}>
-                                            <div><Phone size={14} /> {client.phone}</div>
+                                            {client.phone && <div><Phone size={14} /> {client.phone}</div>}
                                             {client.email && <div><Mail size={14} /> {client.email}</div>}
                                         </div>
                                     </td>
-                                    <td>{formatDate(client.created_at)}</td>
                                     <td>
-                                        <span className={styles.badge}>{client.total_appointments || 0}</span>
+                                        <span className={styles.badge}>{client.status}</span>
+                                    </td>
+                                    <td>
+                                        {(client.tags ?? []).join(', ') || '-'}
                                     </td>
                                     <td>
                                         <div className={styles.actions}>
-                                            <button className={styles.actionButton} title="Editar"><Edit2 size={16} /></button>
                                             <button className={`${styles.actionButton} ${styles.danger}`} onClick={() => handleDelete(client.id)} title="Excluir"><Trash2 size={16} /></button>
                                         </div>
                                     </td>
