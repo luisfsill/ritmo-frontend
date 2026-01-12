@@ -53,7 +53,7 @@ export default function SettingsPage() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const profileData = await api.get<TenantProfile>('/tenants/profile').catch(() => null);
+                const profileData = await api.get<TenantProfile>('/api/v1/tenants/profile').catch(() => null);
                 if (profileData) {
                     setTenantProfile(profileData);
                 }
@@ -73,7 +73,7 @@ export default function SettingsPage() {
 
                 // Verifica status do Google Calendar
                 try {
-                    const calendarStatus = await api.get<GoogleCalendarStatus>('/integrations/google-calendar/status');
+                    const calendarStatus = await api.get<GoogleCalendarStatus>('/api/v1/integrations/google-calendar/status');
                     setGoogleCalendarStatus(calendarStatus);
                 } catch {
                     setGoogleCalendarStatus({ connected: false });
@@ -106,7 +106,7 @@ export default function SettingsPage() {
         
         setIsSaving(true);
         try {
-            await api.patch('/tenants/profile', {
+            await api.patch('/api/v1/tenants/profile', {
                 business_name: tenantProfile.business_name,
                 phone: tenantProfile.phone,
             });
@@ -128,7 +128,7 @@ export default function SettingsPage() {
         setGoogleCalendarLoading(true);
         try {
             // Obtém a URL de autorização do backend
-            const response = await api.get<{ auth_url: string }>('/integrations/google-calendar/auth-url');
+            const response = await api.get<{ auth_url: string }>('/api/v1/integrations/google-calendar/auth-url');
             // Redireciona para o Google OAuth
             window.location.href = response.auth_url;
         } catch (err) {
@@ -147,7 +147,7 @@ export default function SettingsPage() {
         
         setGoogleCalendarLoading(true);
         try {
-            await api.post('/integrations/google-calendar/disconnect', {});
+            await api.post('/api/v1/integrations/google-calendar/disconnect', {});
             setGoogleCalendarStatus({ connected: false });
             alert('Google Calendar desconectado com sucesso!');
         } catch (err) {
