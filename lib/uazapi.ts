@@ -1,7 +1,7 @@
 // UAZAPI WhatsApp Integration Client
 
 const UAZAPI_BASE_URL = process.env.NEXT_PUBLIC_UAZAPI_URL || 'https://lfsystem.uazapi.com';
-const UAZAPI_ADMIN_TOKEN = process.env.UAZAPI_ADMIN_TOKEN || 'NnW4QS2PhG1vahBk23ZwbCdWAq1vwpl9vLPi366Zm0pIO18yyw';
+const UAZAPI_ADMIN_TOKEN = process.env.UAZAPI_ADMIN_TOKEN || '';
 
 // URL do webhook para receber eventos (configure com sua URL real)
 const WEBHOOK_URL = process.env.NEXT_PUBLIC_UAZAPI_WEBHOOK_URL || '';
@@ -367,25 +367,25 @@ class UazapiClient {
 export const uazapi = new UazapiClient();
 
 // Helper para armazenar/recuperar token da instância no localStorage
+const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY || 'whatsapp_instance_token';
+
 export const WhatsAppStorage = {
-  TOKEN_KEY: 'whatsapp_instance_token',
-  
   saveToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(this.TOKEN_KEY, token);
+      localStorage.setItem(TOKEN_KEY, token);
     }
   },
   
   getToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(this.TOKEN_KEY);
+      return localStorage.getItem(TOKEN_KEY);
     }
     return null;
   },
   
   clearToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
     }
   },
 };
