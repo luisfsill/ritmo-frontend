@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -8,6 +8,12 @@ const inter = Inter({
   display: 'swap',
   variable: '--font-inter',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: 'Ritmo - Agendamento Inteligente via WhatsApp',
@@ -62,11 +68,6 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
   },
 };
 
