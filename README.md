@@ -76,8 +76,20 @@ Sistema de agendamento online multi-tenant com painel administrativo, integraç�
 - `lib/` — Contextos, hooks e integrações (ex: uazapi.ts)
 - `public/` — Assets estáticos
 
+## 📚 Documentação
+
+Documentação completa disponível em `docs/`:
+- **[docs/README.md](./docs/README.md)** — Índice e quick start
+- **[docs/development/setup.md](./docs/development/setup.md)** — Setup local detalhado
+- **[docs/api/whatsapp.md](./docs/api/whatsapp.md)** — Integração WhatsApp (UAZAPI)
+- **[docs/architecture/overview.md](./docs/architecture/overview.md)** — Arquitetura geral
+- **[CHANGELOG.md](./CHANGELOG.md)** — Histórico de versões
+- **[RELEASE_NOTES.md](./RELEASE_NOTES.md)** — Últimas mudanças (v1.1.0)
+
 ## Contribuição
 Pull requests são bem-vindos! Abra uma issue para discutir melhorias ou bugs.
+
+Consulte [CONTRIBUTING.md](./CONTRIBUTING.md) para guidelines de código e commits.
 
 ## Licença
 MIT
