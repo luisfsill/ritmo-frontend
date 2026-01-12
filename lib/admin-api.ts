@@ -1,9 +1,19 @@
 /**
  * Admin API Client
- * Supports both JWT-based auth (email/password) and legacy token auth (X-Admin-Token)
+ * JWT-based auth (email/password)
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_RITMO_API_URL;
+function assertV1Endpoint(endpoint: string): void {
+    const trimmed = endpoint.trim();
+    if (!trimmed.startsWith('/')) {
+        throw new Error(`Endpoint inválido: "${endpoint}"`);
+    }
+    if (trimmed === '/api/v1' || trimmed.startsWith('/api/v1/')) {
+        return;
+    }
+    throw new Error(`Endpoint não-versionado (use /api/v1/...): "${endpoint}"`);
+}
 
 // Types
 export interface PlatformUser {
@@ -27,10 +37,9 @@ export interface LoginResponse {
 }
 
 export interface AdminSession {
-    type: 'jwt' | 'legacy';
-    accessToken?: string;
-    refreshToken?: string;
-    legacyToken?: string;
+    type: 'jwt';
+    accessToken: string;
+    refreshToken: string;
     user?: PlatformUser;
 }
 
@@ -57,36 +66,18 @@ export function setAdminSession(session: AdminSession): void {
 export function clearAdminSession(): void {
     if (typeof window !== 'undefined') {
         localStorage.removeItem(ADMIN_SESSION_KEY);
-        localStorage.removeItem('ritmo_admin_token'); // Legacy cleanup
     }
 }
 
 export function isAdminAuthenticated(): boolean {
     const session = getAdminSession();
     if (!session) return false;
-    if (session.type === 'jwt') return !!session.accessToken;
-    if (session.type === 'legacy') return !!session.legacyToken;
-    return false;
+    return session.type === 'jwt' && !!session.accessToken;
 }
 
 export function getAdminUser(): PlatformUser | null {
     const session = getAdminSession();
     return session?.user || null;
-}
-
-// Legacy token functions (for backwards compatibility)
-export function getAdminToken(): string | null {
-    const session = getAdminSession();
-    if (session?.type === 'legacy') return session.legacyToken || null;
-    return null;
-}
-
-export function setAdminToken(token: string): void {
-    setAdminSession({ type: 'legacy', legacyToken: token });
-}
-
-export function clearAdminToken(): void {
-    clearAdminSession();
 }
 
 // Auth functions
@@ -237,18 +228,13 @@ export async function adminRequest<T>(
         throw new Error('API URL not configured');
     }
 
+    assertV1Endpoint(endpoint);
+
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
 
-    // Use JWT auth if available, otherwise fall back to legacy token
-    if (session.type === 'jwt' && session.accessToken) {
-        headers['Authorization'] = `Bearer ${session.accessToken}`;
-    } else if (session.type === 'legacy' && session.legacyToken) {
-        headers['X-Admin-Token'] = session.legacyToken;
-    } else {
-        throw new Error('No valid authentication');
-    }
+    headers['Authorization'] = `Bearer ${session.accessToken}`;
 
     const requestOptions: RequestInit = {
         method,
@@ -261,8 +247,8 @@ export async function adminRequest<T>(
 
     let response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
 
-    // Try token refresh on 401 for JWT auth
-    if (response.status === 401 && session.type === 'jwt') {
+    // Try token refresh on 401
+    if (response.status === 401) {
         const refreshed = await refreshTokens();
         if (refreshed) {
             const newSession = getAdminSession();
@@ -300,21 +286,3 @@ export const adminApi = {
     patch: <T>(endpoint: string, body?: unknown) => adminRequest<T>(endpoint, { method: 'PATCH', body }),
     delete: <T>(endpoint: string, body?: unknown) => adminRequest<T>(endpoint, { method: 'DELETE', body }),
 };
-
-// Validate legacy admin token against backend
-export async function validateAdminToken(token: string): Promise<boolean> {
-    if (!API_BASE_URL) return false;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin/plans`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Admin-Token': token,
-            },
-        });
-        return response.ok;
-    } catch {
-        return false;
-    }
-}
