@@ -4,30 +4,33 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { api } from '@/lib/api';
+import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './calendar.module.css';
 
 interface Appointment {
     id: string;
     start_at: string;
-    client: {
-        id: string;
-        name: string;
-    };
-    service: {
-        id: string;
-        name: string;
-    };
-    staff: {
-        id: string;
-        name: string;
-    };
-    status: string;
+    end_at: string;
+    staff_id: string;
+    client_id: string;
+    service_id: string;
+    status: 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'canceled' | 'no_show';
+    price_cents: number;
+    source: string;
+}
+
+interface Client {
+    id: string;
+    full_name: string;
+    phone: string | null;
 }
 
 export default function CalendarPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [appointments, setAppointments] = useState<Record<string, Appointment[]>>({});
+    const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+    const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(false);
 
     const year = currentDate.getFullYear();
@@ -53,6 +56,18 @@ export default function CalendarPage() {
     const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : null;
     const selectedAppointments = selectedDateKey ? appointments[selectedDateKey] || [] : [];
 
+    useEffect(() => {
+        const loadLookups = async () => {
+            const [catalogData, clientsData] = await Promise.all([
+                getCatalog().catch(() => null),
+                api.get<Client[]>('/api/v1/clients').catch(() => []),
+            ]);
+            setCatalog(catalogData);
+            setClients(clientsData || []);
+        };
+        loadLookups();
+    }, []);
+
     // Buscar agendamentos do dia selecionado
     useEffect(() => {
         const fetchAppointments = async () => {
@@ -65,7 +80,7 @@ export default function CalendarPage() {
 
             setLoading(true);
             try {
-                const data = await api.get<Appointment[]>(`/dashboard/day?date=${dateKey}`);
+                const data = await api.get<Appointment[]>(`/api/v1/dashboard/day?date=${dateKey}`);
                 setAppointments(prev => ({
                     ...prev,
                     [dateKey]: data || []
@@ -88,6 +103,29 @@ export default function CalendarPage() {
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getClientName = (clientId: string) => {
+        return clients.find(c => c.id === clientId)?.full_name ?? 'Cliente';
+    };
+
+    const getServiceName = (serviceId: string) => {
+        return catalog?.services.find(s => s.id === serviceId)?.name ?? 'Serviço';
+    };
+
+    const getStaffName = (staffId: string) => {
+        return catalog?.staff.find(s => s.id === staffId)?.display_name ?? 'Profissional';
+    };
+
+    const getStatusLabel = (status: Appointment['status']) => {
+        switch (status) {
+            case 'booked': return 'Agendado';
+            case 'confirmed': return 'Confirmado';
+            case 'in_progress': return 'Em andamento';
+            case 'completed': return 'Concluído';
+            case 'canceled': return 'Cancelado';
+            case 'no_show': return 'Não compareceu';
+        }
     };
 
     const renderCalendarDays = () => {
@@ -186,15 +224,13 @@ export default function CalendarPage() {
                                 <div key={apt.id} className={styles.appointmentItem}>
                                     <div className={styles.appointmentTime}>{formatTime(apt.start_at)}</div>
                                     <div className={styles.appointmentInfo}>
-                                        <div className={styles.appointmentClient}>{apt.client?.name || 'Cliente'}</div>
+                                        <div className={styles.appointmentClient}>{getClientName(apt.client_id)}</div>
                                         <div className={styles.appointmentService}>
-                                            {apt.service?.name || 'Serviço'} • {apt.staff?.name || 'Profissional'}
+                                            {getServiceName(apt.service_id)} • {getStaffName(apt.staff_id)}
                                         </div>
                                     </div>
                                     <span className={`${styles.statusBadge} ${styles[apt.status]}`}>
-                                        {apt.status === 'confirmed' ? 'Confirmado' : 
-                                         apt.status === 'pending' ? 'Pendente' : 
-                                         apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                                        {getStatusLabel(apt.status)}
                                     </span>
                                 </div>
                             ))}
