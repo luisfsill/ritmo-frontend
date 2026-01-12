@@ -42,8 +42,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const user = getAdminUser();
     if (user) {
       setUserDisplay(user.email);
-    } else if (session?.type === 'legacy') {
-      setUserDisplay('Acesso via Token');
+    } else if (session?.type === 'jwt') {
+      setUserDisplay('Admin');
     }
 
     setIsAuthorized(true);
