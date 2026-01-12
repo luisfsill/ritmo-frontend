@@ -7,7 +7,7 @@ const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/terms', 
 // Routes that should redirect to dashboard if already authenticated
 const authRoutes = ['/login', '/register', '/forgot-password'];
 
-// Admin routes have their own authentication (via X-Admin-Token)
+// Admin routes have their own authentication
 const adminRoutes = ['/admin'];
 
 export function middleware(request: NextRequest) {
@@ -28,7 +28,7 @@ export function middleware(request: NextRequest) {
     // Check if current route is admin (has its own auth)
     const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
 
-    // Admin routes bypass normal auth - they use X-Admin-Token
+    // Admin routes bypass normal auth
     if (isAdminRoute) {
         return NextResponse.next();
     }
