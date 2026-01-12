@@ -107,7 +107,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         try {
             // Fazer login e obter tokens
-            const tokens = await api.post<TokenPair>('/auth/login', { email, password }, { requiresAuth: false });
+            const tokens = await api.post<TokenPair>('/api/v1/auth/login', { email, password }, { requiresAuth: false });
             setTokens(tokens);
             
             // Extrair dados do usuário do token
