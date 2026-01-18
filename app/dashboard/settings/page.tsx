@@ -121,6 +121,7 @@ export default function SettingsPage() {
         try {
             await api.patch('/api/v1/tenants/profile', {
                 business_name: tenantProfile.business_name,
+                slug: tenantProfile.slug,
                 phone: tenantProfile.phone,
             });
             alert('Dados do negócio atualizados com sucesso!');
@@ -263,7 +264,7 @@ export default function SettingsPage() {
                                 <Input 
                                     label="Slug (URL)" 
                                     value={tenantProfile?.slug || ''}
-                                    disabled
+                                    onChange={(e) => setTenantProfile(prev => prev ? { ...prev, slug: e.target.value } : null)}
                                 />
                                 <Input 
                                     label="Telefone" 
