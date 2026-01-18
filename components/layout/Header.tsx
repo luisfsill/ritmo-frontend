@@ -87,13 +87,13 @@ export function Header({ onMenuClick }: HeaderProps) {
                         aria-label="Menu do usuário"
                         aria-expanded={menuOpen}
                     >
-                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                        {user?.business_name?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase() || 'U'}
                     </button>
 
                     {menuOpen && (
                         <div className={styles.dropdown}>
                             <div className={styles.dropdownHeader}>
-                                <span className={styles.dropdownName}>{user?.name || 'Usuário'}</span>
+                                <span className={styles.dropdownName}>{user?.business_name || 'Meu Negócio'}</span>
                                 <span className={styles.dropdownEmail}>{user?.email || ''}</span>
                             </div>
                             <div className={styles.dropdownDivider} />

@@ -48,6 +48,19 @@ export default function SettingsPage() {
     
     // Business state (from /tenants/profile)
     const [tenantProfile, setTenantProfile] = useState<TenantProfile | null>(null);
+    
+    // Profile state (editable)
+    const [profileName, setProfileName] = useState('');
+    const [profileEmail, setProfileEmail] = useState('');
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+    // Sync profile state when user changes
+    useEffect(() => {
+        if (user) {
+            setProfileName(user.name || '');
+            setProfileEmail(user.email || '');
+        }
+    }, [user]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -121,6 +134,27 @@ export default function SettingsPage() {
             }
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        setIsSavingProfile(true);
+        try {
+            await api.patch('/api/v1/users/me', {
+                full_name: profileName,
+                email: profileEmail,
+            });
+            alert('Perfil atualizado com sucesso!');
+        } catch (err) {
+            const apiError = err as ApiError;
+            
+            if (apiError.status === 0) {
+                alert('O serviço está fora do ar no momento. Contate o administrador.');
+            } else {
+                alert(apiError.message || 'Erro ao salvar perfil. Tente novamente.');
+            }
+        } finally {
+            setIsSavingProfile(false);
         }
     };
 
@@ -199,19 +233,21 @@ export default function SettingsPage() {
                             <div className={styles.form}>
                                 <Input 
                                     label="Nome" 
-                                    value={user?.name || ''} 
-                                    disabled
+                                    value={profileName} 
+                                    onChange={(e) => setProfileName(e.target.value)}
                                 />
                                 <Input 
                                     label="Email" 
                                     type="email" 
-                                    value={user?.email || ''}
-                                    disabled
+                                    value={profileEmail}
+                                    onChange={(e) => setProfileEmail(e.target.value)}
                                 />
                             </div>
-                            <p className={styles.infoText}>
-                                Para alterar dados do perfil, entre em contato com o suporte.
-                            </p>
+                            <div className={styles.actions}>
+                                <Button onClick={handleSaveProfile} isLoading={isSavingProfile}>
+                                    <Save size={18} /> Salvar Alterações
+                                </Button>
+                            </div>
                         </div>
                     )}
 
