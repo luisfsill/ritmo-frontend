@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, Search, Menu, Home, Settings, LogOut } from 'lucide-react';
+import { Bell, Menu, Home, Settings, LogOut } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import styles from './Header.module.css';
@@ -61,15 +61,6 @@ export function Header({ onMenuClick }: HeaderProps) {
                 <Link href="/" className={styles.homeButton} title="Home" aria-label="Ir para Home">
                     <Home size={20} />
                 </Link>
-                <div className={styles.searchWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Buscar..."
-                        className={styles.searchInput}
-                    />
-                    <span className={styles.searchShortcut}>⌘K</span>
-                </div>
             </div>
 
             <div className={styles.actions}>

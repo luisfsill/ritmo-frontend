@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, MoreVertical, Edit2, Trash2, Eye, MessageCircle, Plus, Building2 } from 'lucide-react';
+import { MoreVertical, Edit2, Trash2, Eye, MessageCircle, Plus, Building2 } from 'lucide-react';
+import { SearchInput } from '@/components/ui';
 import styles from './tenants.module.css';
 
 interface Tenant {
@@ -111,15 +112,11 @@ export default function TenantsPage() {
 
       {/* Search and Filters */}
       <div className={styles.toolbar}>
-        <div className={styles.searchBox}>
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Buscar por nome, email ou slug..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Buscar por nome, email ou slug..."
+        />
         <div className={styles.filterInfo}>
           {filteredTenants.length} empresa{filteredTenants.length !== 1 ? 's' : ''}
         </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Clock, DollarSign, Loader2 } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { Plus, Edit2, Trash2, Clock, DollarSign, Loader2 } from 'lucide-react';
+import { Button, Input, SearchInput } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './services.module.css';
 
@@ -109,16 +109,11 @@ export default function ServicesPage() {
             </div>
 
             <div className={styles.toolbar}>
-                <div className={styles.searchWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Buscar serviço..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={styles.searchInput}
-                    />
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Buscar serviço..."
+                />
                 <div className={styles.count}>
                     {filteredServices.length} serviço{filteredServices.length !== 1 ? 's' : ''}
                 </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Mail, Phone, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Plus, Trash2, Mail, Phone, Loader2 } from 'lucide-react';
+import { Button, SearchInput } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './clients.module.css';
 
@@ -82,16 +82,11 @@ export default function ClientsPage() {
             </div>
 
             <div className={styles.toolbar}>
-                <div className={styles.searchWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome, telefone ou email..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={styles.searchInput}
-                    />
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Buscar por nome, telefone ou email..."
+                />
                 <div className={styles.count}>
                     {filteredClients.length} cliente{filteredClients.length !== 1 ? 's' : ''}
                 </div>

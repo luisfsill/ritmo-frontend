@@ -2,6 +2,13 @@
 
 Multi-tenant WhatsApp scheduling SaaS built with Next.js 14 (App Router), TypeScript, and UAZAPI integration.
 
+## Important: Project Boundaries
+
+**O backend é área de outro programador.** Neste terminal/workspace do frontend:
+- NÃO fazer alterações no backend
+- Se alguma funcionalidade precisar de mudanças no backend, apenas DOCUMENTAR o que precisa ser feito
+- Comunicar claramente quais endpoints/modelos precisam ser criados ou alterados
+
 ## Architecture Overview
 
 **Multi-Tenant System**: PostgreSQL RLS enforces tenant isolation. JWT tokens contain `tenant_id` - never manipulate tenant context client-side.
@@ -85,7 +92,7 @@ const { tenant, user } = useAuth();  // tenant comes from JWT
 
 **Demo Mode**: 
 - Local dev can emulate demo via `localStorage.setItem('ritmo_access_token', 'demo-token')`.
-- See `lib/auth-context.tsx` for demo user provisioning.
+- See [lib/auth-context.tsx](../lib/auth-context.tsx) for demo user provisioning.
 
 **Scripts**:
 ```bash
@@ -117,8 +124,8 @@ npm run dev:network     # Dev on 0.0.0.0 (for external testing)
 - Use for all communication with Ritmo backend
 
 ## Key Files to Reference
-- `middleware.ts` - Route protection via JWT cookie validation
-- `app/globals.css` - Design tokens (colors, spacing, typography)
-- `lib/api.ts` - HTTP client with token handling
-- `lib/admin-api.ts` - Admin routes (dual auth support)
-- `app/auth-context.tsx` - Auth state and user context
+- [middleware.ts](../middleware.ts) - Route protection via JWT cookie validation
+- [app/globals.css](../app/globals.css) - Design tokens (colors, spacing, typography)
+- [lib/api.ts](../lib/api.ts) - HTTP client with token handling
+- [lib/admin-api.ts](../lib/admin-api.ts) - Admin routes (dual auth support)
+- [lib/auth-context.tsx](../lib/auth-context.tsx) - Auth state and user context

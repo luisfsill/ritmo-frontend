@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { Button, SearchInput } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './staff.module.css';
 
@@ -75,16 +75,11 @@ export default function StaffPage() {
             </div>
 
             <div className={styles.toolbar}>
-                <div className={styles.searchWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={styles.searchInput}
-                    />
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Buscar por nome..."
+                />
                 <div className={styles.count}>
                     {filteredStaff.length} profissiona{filteredStaff.length !== 1 ? 'is' : 'l'}
                 </div>

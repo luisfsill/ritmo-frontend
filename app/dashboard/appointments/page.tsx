@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2, type LucideIcon } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Clock, CheckCircle, XCircle, AlertCircle, Loader2, type LucideIcon } from 'lucide-react';
+import { Button, SearchInput } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './appointments.module.css';
@@ -157,16 +157,11 @@ export default function AppointmentsPage() {
             </div>
 
             <div className={styles.toolbar}>
-                <div className={styles.searchWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Buscar cliente ou serviço..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={styles.searchInput}
-                    />
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Buscar cliente ou serviço..."
+                />
                 <input
                     type="date"
                     value={selectedDate}

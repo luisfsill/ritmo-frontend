@@ -426,9 +426,9 @@ export default function SettingsPage() {
                         <div className={styles.section}>
                             <h2 className={styles.sectionTitle}>Alterar Senha</h2>
                             <div className={styles.form}>
-                                <Input label="Senha atual" type="password" />
-                                <Input label="Nova senha" type="password" />
-                                <Input label="Confirmar nova senha" type="password" />
+                                <Input label="Senha atual" type="password" autoComplete="new-password" />
+                                <Input label="Nova senha" type="password" autoComplete="new-password" />
+                                <Input label="Confirmar nova senha" type="password" autoComplete="new-password" />
                             </div>
                             <div className={styles.actions}>
                                 <Button isLoading={isSaving}>
