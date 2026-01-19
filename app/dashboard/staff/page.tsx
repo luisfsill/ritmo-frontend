@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
-import { Button, SearchInput } from '@/components/ui';
+import { Plus, Trash2, Loader2, Edit2 } from 'lucide-react';
+import { Button, Input, SearchInput, Modal, ModalFooter } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './staff.module.css';
+
+interface StaffFormData {
+    display_name: string;
+    is_active: boolean;
+}
 
 interface Staff {
     id: string;
@@ -17,6 +22,13 @@ export default function StaffPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [formData, setFormData] = useState<StaffFormData>({
+        display_name: '',
+        is_active: true,
+    });
 
     useEffect(() => {
         loadStaff();
@@ -62,6 +74,64 @@ export default function StaffPage() {
         member.display_name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const resetForm = () => {
+        setFormData({
+            display_name: '',
+            is_active: true,
+        });
+    };
+
+    const openCreateModal = () => {
+        setEditingStaff(null);
+        resetForm();
+        setShowModal(true);
+    };
+
+    const openEditModal = (member: Staff) => {
+        setEditingStaff(member);
+        setFormData({
+            display_name: member.display_name,
+            is_active: member.is_active,
+        });
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setEditingStaff(null);
+        resetForm();
+    };
+
+    const handleSave = async () => {
+        if (!formData.display_name.trim()) {
+            alert('O nome do profissional é obrigatório');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const payload = {
+                display_name: formData.display_name.trim(),
+                is_active: formData.is_active,
+            };
+
+            if (editingStaff) {
+                const updated = await api.patch<Staff>(`/api/v1/staff/${editingStaff.id}`, payload);
+                setStaff(staff.map(s => s.id === editingStaff.id ? updated : s));
+            } else {
+                const created = await api.post<Staff>('/api/v1/staff', payload);
+                setStaff([...staff, created]);
+            }
+
+            closeModal();
+        } catch (err) {
+            const apiError = err as ApiError;
+            alert(apiError.message || 'Erro ao salvar profissional. Tente novamente.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className={styles.page}>
             <div className={styles.header}>
@@ -69,7 +139,7 @@ export default function StaffPage() {
                     <h1 className={styles.title}>Equipe</h1>
                     <p className={styles.subtitle}>Gerencie os profissionais do seu negócio</p>
                 </div>
-                <Button leftIcon={<Plus size={18} />}>
+                <Button leftIcon={<Plus size={18} />} onClick={openCreateModal}>
                     Novo Profissional
                 </Button>
             </div>
@@ -118,6 +188,9 @@ export default function StaffPage() {
                             </div>
 
                             <div className={styles.cardFooter}>
+                                <button className={styles.actionButton} onClick={() => openEditModal(member)} title="Editar">
+                                    <Edit2 size={16} />
+                                </button>
                                 <button className={`${styles.actionButton} ${styles.danger}`} onClick={() => handleDelete(member.id)} title="Excluir">
                                     <Trash2 size={16} />
                                 </button>
@@ -126,6 +199,52 @@ export default function StaffPage() {
                     ))}
                 </div>
             )}
+
+            {/* Modal de Criar/Editar Profissional */}
+            <Modal
+                isOpen={showModal}
+                onClose={closeModal}
+                title={editingStaff ? 'Editar Profissional' : 'Novo Profissional'}
+                size="sm"
+            >
+                <div className={styles.form}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Nome do Profissional *</label>
+                        <Input
+                            value={formData.display_name}
+                            onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                            placeholder="Ex: Maria Silva"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.checkboxLabel}>
+                            <input
+                                type="checkbox"
+                                checked={formData.is_active}
+                                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                            />
+                            <span>Profissional ativo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <ModalFooter>
+                    <Button variant="secondary" onClick={closeModal} disabled={saving}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                            <>
+                                <Loader2 size={16} className={styles.spinner} />
+                                Salvando...
+                            </>
+                        ) : (
+                            editingStaff ? 'Salvar' : 'Criar Profissional'
+                        )}
+                    </Button>
+                </ModalFooter>
+            </Modal>
         </div>
     );
 }

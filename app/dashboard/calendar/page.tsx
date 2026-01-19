@@ -2,10 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, Input, Modal, ModalFooter } from '@/components/ui';
 import { api } from '@/lib/api';
 import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './calendar.module.css';
+
+interface AppointmentFormData {
+    client_name: string;
+    client_phone: string;
+    service_id: string;
+    staff_id: string;
+    date: string;
+    time: string;
+}
 
 interface Appointment {
     id: string;
@@ -32,6 +41,16 @@ export default function CalendarPage() {
     const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [formData, setFormData] = useState<AppointmentFormData>({
+        client_name: '',
+        client_phone: '',
+        service_id: '',
+        staff_id: '',
+        date: '',
+        time: '',
+    });
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -128,6 +147,63 @@ export default function CalendarPage() {
         }
     };
 
+    const resetForm = () => {
+        const today = selectedDate || new Date();
+        setFormData({
+            client_name: '',
+            client_phone: '',
+            service_id: catalog?.services[0]?.id || '',
+            staff_id: catalog?.staff[0]?.id || '',
+            date: formatDateKey(today),
+            time: '09:00',
+        });
+    };
+
+    const openCreateModal = () => {
+        resetForm();
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        resetForm();
+    };
+
+    const handleSave = async () => {
+        if (!formData.client_name.trim() || !formData.client_phone.trim()) {
+            alert('Nome e telefone do cliente são obrigatórios');
+            return;
+        }
+        if (!formData.service_id || !formData.staff_id) {
+            alert('Selecione o serviço e o profissional');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const startAt = new Date(`${formData.date}T${formData.time}:00`);
+            
+            const payload = {
+                client_name: formData.client_name.trim(),
+                client_phone: formData.client_phone.trim(),
+                service_id: formData.service_id,
+                staff_id: formData.staff_id,
+                start_at: startAt.toISOString(),
+            };
+
+            await api.post('/api/v1/appointments', payload);
+            
+            // Limpa o cache para recarregar os agendamentos
+            setAppointments({});
+            closeModal();
+        } catch (err) {
+            const error = err as { message?: string };
+            alert(error.message || 'Erro ao criar agendamento. Tente novamente.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const renderCalendarDays = () => {
         const days = [];
         const today = new Date();
@@ -166,7 +242,7 @@ export default function CalendarPage() {
                     <h1 className={styles.title}>Agenda</h1>
                     <p className={styles.subtitle}>Visualize e gerencie agendamentos</p>
                 </div>
-                <Button leftIcon={<Plus size={18} />}>
+                <Button leftIcon={<Plus size={18} />} onClick={openCreateModal}>
                     Novo Agendamento
                 </Button>
             </div>
@@ -238,6 +314,101 @@ export default function CalendarPage() {
                     )}
                 </div>
             </div>
+
+            {/* Modal de Novo Agendamento */}
+            <Modal
+                isOpen={showModal}
+                onClose={closeModal}
+                title="Novo Agendamento"
+                size="md"
+            >
+                <div className={styles.form}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Nome do Cliente *</label>
+                        <Input
+                            value={formData.client_name}
+                            onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                            placeholder="Nome completo"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Telefone / WhatsApp *</label>
+                        <Input
+                            type="tel"
+                            value={formData.client_phone}
+                            onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+                            placeholder="(11) 99999-9999"
+                        />
+                    </div>
+
+                    <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Serviço *</label>
+                            <select
+                                className={styles.select}
+                                value={formData.service_id}
+                                onChange={(e) => setFormData({ ...formData, service_id: e.target.value })}
+                            >
+                                <option value="">Selecione...</option>
+                                {catalog?.services.map(service => (
+                                    <option key={service.id} value={service.id}>{service.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Profissional *</label>
+                            <select
+                                className={styles.select}
+                                value={formData.staff_id}
+                                onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
+                            >
+                                <option value="">Selecione...</option>
+                                {catalog?.staff.map(member => (
+                                    <option key={member.id} value={member.id}>{member.display_name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Data *</label>
+                            <Input
+                                type="date"
+                                value={formData.date}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                            />
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Horário *</label>
+                            <Input
+                                type="time"
+                                value={formData.time}
+                                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <ModalFooter>
+                    <Button variant="secondary" onClick={closeModal} disabled={saving}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                            <>
+                                <Loader2 size={16} className={styles.spinner} />
+                                Salvando...
+                            </>
+                        ) : (
+                            'Criar Agendamento'
+                        )}
+                    </Button>
+                </ModalFooter>
+            </Modal>
         </div>
     );
 }
