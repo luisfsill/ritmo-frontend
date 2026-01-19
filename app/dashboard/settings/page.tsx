@@ -38,7 +38,7 @@ interface GoogleCalendarStatus {
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<Tab>('profile');
     const { theme, setTheme } = useTheme();
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
@@ -145,6 +145,7 @@ export default function SettingsPage() {
                 full_name: profileName,
                 email: profileEmail,
             });
+            await refreshUser(); // Atualiza os dados do usuário no contexto
             alert('Perfil atualizado com sucesso!');
         } catch (err) {
             const apiError = err as ApiError;
