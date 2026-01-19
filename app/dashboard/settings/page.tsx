@@ -123,6 +123,7 @@ export default function SettingsPage() {
                 business_name: tenantProfile.business_name,
                 slug: tenantProfile.slug,
                 phone: tenantProfile.phone,
+                business_type: tenantProfile.business_type,
             });
             alert('Dados do negócio atualizados com sucesso!');
         } catch (err) {
@@ -136,6 +137,19 @@ export default function SettingsPage() {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    // Formatar telefone para (XX) X XXXX-XXXX
+    const formatPhone = (value: string) => {
+        const cleaned = value.replace(/\D/g, '');
+        if (cleaned.length <= 2) return cleaned;
+        if (cleaned.length <= 7) return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2)}`;
+        return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 3)} ${cleaned.slice(3, 7)}-${cleaned.slice(7, 11)}`;
+    };
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatPhone(e.target.value);
+        setTenantProfile(prev => prev ? { ...prev, phone: formatted } : null);
     };
 
     const handleSaveProfile = async () => {
@@ -270,12 +284,13 @@ export default function SettingsPage() {
                                 <Input 
                                     label="Telefone" 
                                     value={tenantProfile?.phone || ''}
-                                    onChange={(e) => setTenantProfile(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                                    onChange={handlePhoneChange}
+                                    placeholder="(00) 0 0000-0000"
                                 />
                                 <Input 
                                     label="Tipo de Negócio" 
                                     value={tenantProfile?.business_type || ''}
-                                    disabled
+                                    onChange={(e) => setTenantProfile(prev => prev ? { ...prev, business_type: e.target.value } : null)}
                                 />
                             </div>
                             <div className={styles.actions}>
