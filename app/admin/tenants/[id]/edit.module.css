@@ -135,6 +135,28 @@
   flex-shrink: 0;
 }
 
+.infoCardLink {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.infoCardLink:hover {
+  border-color: var(--primary);
+  background: rgba(233, 69, 96, 0.05);
+}
+
+.infoCardLink svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
 .infoValue {
   display: block;
   font-size: 1.125rem;
