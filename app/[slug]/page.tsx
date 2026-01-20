@@ -81,7 +81,7 @@ export default function PublicBookingPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`${API_BASE_URL}/public/${slug}/services`);
+        const response = await fetch(`${API_BASE_URL}/api/v1/public/${slug}/services`);
         
         if (response.status === 404) {
           setTenantNotFound(true);
@@ -115,7 +115,7 @@ export default function PublicBookingPage() {
       setError(null);
       const dateStr = date.toISOString().split('T')[0];
       const response = await fetch(
-        `${API_BASE_URL}/public/${slug}/availability?service_id=${selectedService.id}&date=${dateStr}`
+        `${API_BASE_URL}/api/v1/public/${slug}/availability?service_id=${selectedService.id}&date=${dateStr}`
       );
       
       if (!response.ok) {
@@ -146,7 +146,7 @@ export default function PublicBookingPage() {
       setBookingLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_BASE_URL}/public/${slug}/book`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/public/${slug}/book`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
