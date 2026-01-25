@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, MessageCircle, Loader2, RefreshCw, Smartphone, AlertCircle, Check, Unplug, Trash2 } from 'lucide-react';
 import { uazapi, WhatsAppStorage, UazapiInstance, UazapiStatus } from '@/lib/uazapi';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api';
 import styles from './WhatsAppModal.module.css';
 
 interface WhatsAppModalProps {
@@ -67,14 +68,20 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     try {
       // Primeiro tenta pegar o token salvo localmente
       let token = WhatsAppStorage.getToken();
-      let currentInstance: UazapiInstance | null = null;
       
-      // Se não tem token local, busca pelo tenant
+      // Se não tem token local, tenta carregar via backend
       if (!token) {
-        currentInstance = await uazapi.findInstanceByTenant(tenantId);
-        if (currentInstance) {
-          token = currentInstance.token;
-          WhatsAppStorage.saveToken(token);
+        try {
+          const statusResult = await api.get<any>('/api/v1/uazapi/instance/status');
+          if (statusResult.status?.instance?.token) {
+            token = statusResult.status.instance.token;
+            WhatsAppStorage.saveToken(token);
+          }
+        } catch {
+          // Se falhar, trata como sem instância
+          setState('no-instance');
+          setInstance(null);
+          return;
         }
       }
 
@@ -158,18 +165,27 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setIsRefreshing(false);
   };
 
-  // Criar nova instância
+  // Criar nova instância via backend
   const handleCreateInstance = async () => {
     setActionLoading('create');
     setError(null);
 
     try {
       const instanceName = generateSlug(businessName);
-      const result = await uazapi.createInstance(instanceName, tenantId);
       
-      WhatsAppStorage.saveToken(result.token);
-      setInstance(result.instance);
-      setState('disconnected');
+      // Chama o backend que fará a chamada ao Uazapi com o admin token
+      const result = await api.post<any>('/api/v1/uazapi/instance/init', {
+        name: instanceName,
+      });
+      
+      // Navega para o estado desconectado após criar
+      if (result.instance) {
+        setInstance(result.instance);
+        setState('disconnected');
+      }
+      
+      // Atualiza o status após alguns segundos
+      setTimeout(loadInstanceStatus, 1000);
     } catch (err) {
       console.error('Error creating instance:', err);
       setError(err instanceof Error ? err.message : 'Erro ao criar instância');

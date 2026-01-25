@@ -94,8 +94,14 @@ class UazapiClient {
   }
 
   // ==================== ADMIN ENDPOINTS ====================
+  // NOTA: Essas funções abaixo NÃO devem ser chamadas do frontend!
+  // Elas expõem o admintoken e chamam a API Uazapi diretamente.
+  // Use as rotas do backend em vez disso:
+  // - POST /api/v1/uazapi/instance/init para criar instância
+  // - GET /api/v1/uazapi/instance/status para obter status
 
   /**
+   * @deprecated Use o backend: POST /api/v1/uazapi/instance/init
    * Lista todas as instâncias (requer admintoken)
    */
   async listAllInstances(): Promise<UazapiInstance[]> {
@@ -116,6 +122,7 @@ class UazapiClient {
   }
 
   /**
+   * @deprecated Use o backend: POST /api/v1/uazapi/instance/init
    * Cria uma nova instância (requer admintoken)
    * @param name Nome da instância
    * @param tenantId ID do tenant (será salvo em adminField01)
@@ -143,6 +150,7 @@ class UazapiClient {
   }
 
   /**
+   * @deprecated Use o backend: GET /api/v1/uazapi/instance/status
    * Busca instância por tenant ID
    */
   async findInstanceByTenant(tenantId: string): Promise<UazapiInstance | null> {
