@@ -73,12 +73,22 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       if (!token) {
         try {
           const statusResult = await api.get<any>('/api/v1/uazapi/instance/status');
-          if (statusResult.status?.instance?.token) {
-            token = statusResult.status.instance.token;
+          // O backend retorna { status: {...} } contendo os dados da instância
+          const instanceData = statusResult?.status?.instance || statusResult?.instance;
+          const instanceToken = instanceData?.token || statusResult?.status?.token;
+          if (instanceToken) {
+            token = instanceToken;
             WhatsAppStorage.saveToken(token);
           }
-        } catch {
-          // Se falhar, trata como sem instância
+        } catch (err: any) {
+          // Erros 400/404 significam que não há instância - é esperado
+          if (err?.status === 400 || err?.status === 404) {
+            setState('no-instance');
+            setInstance(null);
+            return;
+          }
+          // Outros erros podem ser problemas de conexão
+          console.warn('Erro ao verificar status da instância:', err);
           setState('no-instance');
           setInstance(null);
           return;
@@ -91,7 +101,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         return;
       }
 
-      // Busca o status da instância
+      // Busca o status da instância diretamente no Uazapi
       const status = await uazapi.getStatus(token);
       setInstance(status.instance);
       setStatusData(status);
@@ -178,6 +188,12 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         name: instanceName,
       });
       
+      // Extrai token da resposta
+      const instanceToken = result?.instance?.token || result?.token;
+      if (instanceToken) {
+        WhatsAppStorage.saveToken(instanceToken);
+      }
+      
       // Navega para o estado desconectado após criar
       if (result.instance) {
         setInstance(result.instance);
@@ -186,9 +202,26 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       
       // Atualiza o status após alguns segundos
       setTimeout(loadInstanceStatus, 1000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating instance:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao criar instância');
+      
+      // Mensagens de erro mais específicas
+      // O 'err' pode ser um ApiError { status, message, details } ou um Error normal
+      const errorMessage = err?.message || '';
+      const errorDetail = err?.details?.detail || '';
+      const fullError = `${errorMessage} ${errorDetail}`.toLowerCase();
+      
+      if (fullError.includes('uazapi_admin_token_missing')) {
+        setError('Configuração do servidor incompleta. Contate o administrador (UAZAPI_ADMIN_TOKEN não configurado).');
+      } else if (fullError.includes('uazapi_token_missing')) {
+        setError('Token da instância não encontrado. Tente novamente.');
+      } else if (err?.status === 401) {
+        setError('Sessão expirada. Faça login novamente.');
+      } else if (err?.status === 0 || fullError.includes('cors') || fullError.includes('network') || fullError.includes('failed to fetch')) {
+        setError('Erro de conexão com o servidor. Verifique sua internet.');
+      } else {
+        setError(errorMessage || 'Erro ao criar instância. Tente novamente.');
+      }
     } finally {
       setActionLoading(null);
     }
