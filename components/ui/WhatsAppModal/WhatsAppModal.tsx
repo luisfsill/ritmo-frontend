@@ -228,24 +228,35 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     }
   };
 
-  // Conectar (gerar QR code)
+  // Conectar (gerar QR code) via backend
   const handleConnect = async () => {
     setActionLoading('connect');
     setError(null);
 
     try {
-      const token = WhatsAppStorage.getToken();
-      if (!token) throw new Error('Token não encontrado');
-
-      const result = await uazapi.connect(token);
-      setInstance(result.instance);
-      setState('connecting');
+      // Chama o backend que irá conectar a instância
+      const result = await api.post<any>('/api/v1/uazapi/instance/connect', {});
+      
+      if (result.connect) {
+        setInstance(result.connect.instance || result.connect);
+        setState('connecting');
+      }
       
       // Atualiza status imediatamente
       setTimeout(loadInstanceStatus, 1000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error connecting:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao conectar');
+      const errorMessage = err?.message || '';
+      const errorDetail = err?.details?.detail || '';
+      const fullError = `${errorMessage} ${errorDetail}`.toLowerCase();
+      
+      if (fullError.includes('uazapi_token_missing')) {
+        setError('Token da instância não encontrado. Crie uma nova instância.');
+      } else if (err?.status === 401) {
+        setError('Sessão expirada. Faça login novamente.');
+      } else {
+        setError(errorMessage || 'Erro ao conectar. Tente novamente.');
+      }
     } finally {
       setActionLoading(null);
     }
