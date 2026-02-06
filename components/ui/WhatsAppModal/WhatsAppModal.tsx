@@ -214,6 +214,8 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         setError('Configuração do servidor incompleta. Contate o administrador (UAZAPI_ADMIN_TOKEN não configurado).');
       } else if (fullError.includes('uazapi_token_missing')) {
         setError('Token da instância não encontrado. Tente novamente.');
+      } else if (fullError.includes('maximum') || fullError.includes('limit') || fullError.includes('429') || fullError.includes('max_instances')) {
+        setError('Limite de instâncias atingido no servidor WhatsApp. Contate o suporte para liberar mais instâncias.');
       } else if (err?.status === 401) {
         setError('Sessão expirada. Faça login novamente.');
       } else if (err?.status === 0 || fullError.includes('cors') || fullError.includes('network') || fullError.includes('failed to fetch')) {
