@@ -66,36 +66,34 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
     
     try {
-      // Primeiro tenta pegar o token salvo localmente
-      let token = WhatsAppStorage.getToken();
+      // SEMPRE verifica primeiro com o backend se existe instância configurada
+      let token: string | null = null;
       
-      // Se não tem token local, tenta carregar via backend
-      if (!token) {
-        try {
-          const statusResult = await api.get<any>('/api/v1/uazapi/instance/status');
-          // O backend retorna { status: {...} } contendo os dados da instância
-          const instanceData = statusResult?.status?.instance || statusResult?.instance;
-          const instanceToken = instanceData?.token || statusResult?.status?.token;
-          if (instanceToken) {
-            token = instanceToken;
-            WhatsAppStorage.saveToken(instanceToken);
-          }
-        } catch (err: any) {
-          // Erros 400/404 significam que não há instância - é esperado
-          if (err?.status === 400 || err?.status === 404) {
-            setState('no-instance');
-            setInstance(null);
-            return;
-          }
-          // Outros erros podem ser problemas de conexão
-          console.warn('Erro ao verificar status da instância:', err);
+      try {
+        const statusResult = await api.get<any>('/api/v1/uazapi/instance/status');
+        // O backend retorna { status: {...} } contendo os dados da instância
+        const instanceData = statusResult?.status?.instance || statusResult?.instance;
+        const instanceToken = instanceData?.token || statusResult?.status?.token;
+        if (instanceToken) {
+          token = instanceToken;
+          WhatsAppStorage.saveToken(instanceToken);
+        }
+      } catch (err: any) {
+        // Erros 400/404 significam que não há instância - é esperado
+        if (err?.status === 400 || err?.status === 404) {
+          // Limpa qualquer token antigo que possa existir
+          WhatsAppStorage.clearToken();
           setState('no-instance');
           setInstance(null);
           return;
         }
+        // Outros erros podem ser problemas de conexão - tenta usar token local
+        console.warn('Erro ao verificar status via backend:', err);
+        token = WhatsAppStorage.getToken();
       }
 
       if (!token) {
+        WhatsAppStorage.clearToken();
         setState('no-instance');
         setInstance(null);
         return;
@@ -119,8 +117,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       }
     } catch (err) {
       console.error('Error loading instance:', err);
-      // Se der erro de token inválido, limpa o storage
-      if (err instanceof Error && err.message.includes('not found')) {
+      // Se der erro de token inválido (401 ou não encontrado), limpa o storage
+      const errorMessage = err instanceof Error ? err.message : '';
+      if (errorMessage.includes('not found') || errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
         WhatsAppStorage.clearToken();
         setState('no-instance');
       } else {
