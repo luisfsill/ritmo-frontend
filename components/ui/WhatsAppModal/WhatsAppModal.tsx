@@ -78,7 +78,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           const instanceToken = instanceData?.token || statusResult?.status?.token;
           if (instanceToken) {
             token = instanceToken;
-            WhatsAppStorage.saveToken(token);
+            WhatsAppStorage.saveToken(instanceToken);
           }
         } catch (err: any) {
           // Erros 400/404 significam que não há instância - é esperado
