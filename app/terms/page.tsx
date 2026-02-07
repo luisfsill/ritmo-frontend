@@ -82,7 +82,7 @@ export default function TermsPage() {
                 <section className={styles.section}>
                     <h2>6. Limitação de Responsabilidade</h2>
                     <p>
-                        O Ritmo Agendamento é fornecido "como está" e "conforme disponível". Não garantimos 
+                        O Ritmo Agendamento é fornecido &quot;como está&quot; e &quot;conforme disponível&quot;. Não garantimos 
                         que o serviço será ininterrupto, livre de erros ou completamente seguro. Em nenhuma 
                         circunstância seremos responsáveis por danos indiretos, incidentais ou consequenciais.
                     </p>

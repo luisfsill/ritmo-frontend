@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage() {
 
             <h2>1. Introdução</h2>
             <p>
-                A Ritmo Agendamento ("nós", "nosso" ou "nos") está comprometida em proteger sua privacidade. 
+                A Ritmo Agendamento (&quot;nós&quot;, &quot;nosso&quot; ou &quot;nos&quot;) está comprometida em proteger sua privacidade. 
                 Esta Política de Privacidade explica como coletamos, usamos, divulgamos e salvaguardamos suas informações 
                 quando você usa nossa plataforma de agendamento.
             </p>
