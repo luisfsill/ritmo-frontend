@@ -63,7 +63,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [whatsappStatus, setWhatsappStatus] = useState<
-        'connected' | 'disconnected' | 'loading' | 'pending' | 'error' | 'config_required'
+        'connected' | 'disconnected' | 'loading' | 'pending' | 'error' | 'config_required' | 'rollout'
     >('loading');
     const [whatsappStatusHint, setWhatsappStatusHint] = useState<string | null>(null);
     const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus>({ connected: false });
