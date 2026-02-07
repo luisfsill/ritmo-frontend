@@ -132,7 +132,9 @@ function handleApiError(status: number, data: unknown): never {
       }
       break;
     case 403:
-      message = 'Você não tem permissão para esta ação';
+      if (message === 'Ocorreu um erro inesperado') {
+        message = 'Você não tem permissão para esta ação';
+      }
       break;
     case 404:
       message = message || 'Recurso não encontrado';
