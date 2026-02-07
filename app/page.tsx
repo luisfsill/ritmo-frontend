@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Calendar, 
@@ -20,12 +20,25 @@ import {
   Target,
   Shield,
   TrendingUp,
-  Heart,
   Zap,
   Eye
 } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
 import styles from './page.module.css';
+
+type GtagWindow = Window & typeof globalThis & {
+  gtag?: (...args: unknown[]) => void;
+};
+
+function trackEvent(name: string, params: Record<string, unknown>): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const trackedWindow = window as GtagWindow;
+  if (trackedWindow.gtag) {
+    trackedWindow.gtag('event', name, params);
+  }
+}
 
 export default function LandingPage() {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -35,7 +48,7 @@ export default function LandingPage() {
   const [isAnimating, setIsAnimating] = useState(false);
 
   // Cards da demonstração - Fluxo refatorado
-  const demoCards = [
+  const demoCards = useMemo(() => [
     {
       id: 0,
       title: 'Você está perdendo vendas',
@@ -177,19 +190,17 @@ export default function LandingPage() {
         </div>
       ),
     },
-  ];
+  ], []);
 
   const goToNextCard = useCallback(() => {
     if (isAnimating || currentCard >= demoCards.length - 1) return;
     setIsAnimating(true);
     setDirection('next');
     // Track card view in GA
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'demo_card_next', {
-        card_index: currentCard,
-        card_title: demoCards[currentCard].title,
-      });
-    }
+    trackEvent('demo_card_next', {
+      card_index: currentCard,
+      card_title: demoCards[currentCard].title,
+    });
     setTimeout(() => {
       setCurrentCard(prev => prev + 1);
       setIsAnimating(false);
@@ -200,12 +211,10 @@ export default function LandingPage() {
     if (isAnimating || currentCard <= 0) return;
     setIsAnimating(true);
     setDirection('prev');
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'demo_card_prev', {
-        card_index: currentCard,
-        card_title: demoCards[currentCard].title,
-      });
-    }
+    trackEvent('demo_card_prev', {
+      card_index: currentCard,
+      card_title: demoCards[currentCard].title,
+    });
     setTimeout(() => {
       setCurrentCard(prev => prev - 1);
       setIsAnimating(false);
@@ -217,13 +226,11 @@ export default function LandingPage() {
     setIsAnimating(true);
     setDirection(index > currentCard ? 'next' : 'prev');
     
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'demo_card_viewed', {
-        card_index: index,
-        card_title: demoCards[index].title,
-        previous_card: currentCard,
-      });
-    }
+    trackEvent('demo_card_viewed', {
+      card_index: index,
+      card_title: demoCards[index].title,
+      previous_card: currentCard,
+    });
     
     setTimeout(() => {
       setCurrentCard(index);

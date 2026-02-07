@@ -9,7 +9,6 @@ import {
   Moon, 
   Target, 
   Users, 
-  Lightbulb, 
   Shield, 
   CheckCircle,
   Clock,
