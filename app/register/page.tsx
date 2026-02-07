@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Lock, User, Building2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, ThemeToggle } from '@/components/ui';
-import { api, setTokens, TokenPair } from '@/lib/api';
+import { api, TokenPair } from '@/lib/api';
 import Link from 'next/link';
 import styles from './register.module.css';
 
@@ -15,7 +15,7 @@ const registerSchema = z.object({
     business_name: z.string().min(2, 'Nome do negócio é obrigatório'),
     owner_name: z.string().min(2, 'Seu nome é obrigatório'),
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
     confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
     message: 'Senhas não coincidem',

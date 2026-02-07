@@ -35,7 +35,6 @@ export default function LoginPage() {
         register,
         handleSubmit,
         formState: { errors },
-        setValue,
     } = useForm<LoginForm>({
         resolver: zodResolver(loginSchema),
         defaultValues: {
@@ -43,11 +42,6 @@ export default function LoginPage() {
             password: '',
         },
     });
-
-    const fillDemoCredentials = () => {
-        setValue('email', 'admin@admin.com');
-        setValue('password', 'admin');
-    };
 
     const handleDemoLogin = async () => {
         setSubmitError(null);
@@ -82,7 +76,7 @@ export default function LoginPage() {
             
             // Redirecionar para dashboard usando window.location para forçar reload
             window.location.href = '/dashboard';
-        } catch (err) {
+        } catch {
             setSubmitError('Erro ao fazer login de demonstração.');
         }
     };
