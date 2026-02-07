@@ -1,0 +1,41 @@
+name: Frontend Verify
+
+on:
+  push:
+    paths:
+      - "ritmo-frontend/**"
+      - ".github/workflows/frontend-verify.yml"
+  pull_request:
+    paths:
+      - "ritmo-frontend/**"
+      - ".github/workflows/frontend-verify.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ritmo-frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ritmo-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
