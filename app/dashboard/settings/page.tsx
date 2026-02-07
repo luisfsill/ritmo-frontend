@@ -126,8 +126,8 @@ export default function SettingsPage() {
                             setWhatsappStatus('rollout');
                             setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
                         } else if (capabilities.reason === 'missing_webhook_secret') {
-                            setWhatsappStatus('config_required');
-                            setWhatsappStatusHint('Integração temporariamente indisponível: configuração de webhook pendente.');
+                            setWhatsappStatus('disconnected');
+                            setWhatsappStatusHint('Webhook pendente no servidor. Você pode conectar, mas eventos podem não chegar.');
                         } else {
                             setWhatsappStatus('rollout');
                             setWhatsappStatusHint('Integração temporariamente indisponível para este tenant.');
@@ -150,8 +150,8 @@ export default function SettingsPage() {
                         setWhatsappStatus('rollout');
                         setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
                     } else if (message.includes('uazapi_webhook_secret_missing')) {
-                        setWhatsappStatus('config_required');
-                        setWhatsappStatusHint('Integração temporariamente indisponível: configuração de webhook pendente.');
+                        setWhatsappStatus('disconnected');
+                        setWhatsappStatusHint('Webhook pendente no servidor. Você pode conectar, mas eventos podem não chegar.');
                     } else {
                         setWhatsappStatus('error');
                         setWhatsappStatusHint(null);

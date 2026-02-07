@@ -36,6 +36,9 @@ function humanizeUazapiError(message: string): string {
   if (message.includes('uazapi_webhook_secret_missing')) {
     return 'Integração temporariamente indisponível: configuração de webhook pendente no backend.';
   }
+  if (message.includes('uazapi_token_missing')) {
+    return 'Token da instância não encontrado. Crie uma nova instância ou tente novamente.';
+  }
   if (
     message.includes('429') ||
     message.includes('max_instances') ||
@@ -45,6 +48,40 @@ function humanizeUazapiError(message: string): string {
     return 'Limite de instâncias atingido no servidor WhatsApp. Contate o suporte para liberar mais instâncias.';
   }
   return message;
+}
+
+function extractInstanceToken(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const extractFrom = (value: unknown): string | null => {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    for (const key of ['token', 'instance_token', 'instanceToken']) {
+      const raw = record[key];
+      if (typeof raw === 'string' && raw.trim()) {
+        return raw.trim();
+      }
+    }
+    return null;
+  };
+
+  const direct = extractFrom(payload);
+  if (direct) {
+    return direct;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const nested = extractFrom(record.instance);
+  if (nested) {
+    return nested;
+  }
+
+  const nestedInstance = record.instance && typeof record.instance === 'object' ? (record.instance as Record<string, unknown>).instance : null;
+  return extractFrom(nestedInstance);
 }
 
 export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
@@ -202,6 +239,12 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           const capabilities = await uazapi.getCapabilities();
           if (!capabilities.enabled) {
             const reason = capabilities.reason || 'canary_disabled';
+            if (reason === 'missing_webhook_secret') {
+              setBlockedReason(null);
+              setError(humanizeUazapiError('uazapi_webhook_secret_missing'));
+              await loadInstanceStatus();
+              return;
+            }
             setBlockedReason(reason);
             setState('error');
             setError(humanizeUazapiError(reason));
@@ -310,6 +353,11 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         return;
       }
 
+      const token = extractInstanceToken(result.data);
+      if (token) {
+        WhatsAppStorage.saveToken(token);
+      }
+
       await loadInstanceStatus();
     } catch (err) {
       setError(humanizeUazapiError(normalizeError(err)));
@@ -323,7 +371,8 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const result = await uazapi.connect();
+      const legacyToken = WhatsAppStorage.getToken();
+      const result = await uazapi.connect({ token: legacyToken || undefined });
 
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);

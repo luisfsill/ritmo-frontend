@@ -136,10 +136,16 @@ class UazapiClient {
     return asOperationResult(payload);
   }
 
-  async connect(phone?: string): Promise<UazapiResult<UazapiConnectData>> {
-    const payload = await api.post<UazapiConnectData | PendingCommandResponse>('/api/v1/uazapi/instance/connect', {
-      ...(phone ? { phone } : {}),
-    });
+  async connect(options?: { phone?: string; token?: string }): Promise<UazapiResult<UazapiConnectData>> {
+    const payloadBody: Record<string, string> = {};
+    if (options?.phone) {
+      payloadBody.phone = options.phone;
+    }
+    if (options?.token) {
+      payloadBody.token = options.token;
+    }
+
+    const payload = await api.post<UazapiConnectData | PendingCommandResponse>('/api/v1/uazapi/instance/connect', payloadBody);
     return asOperationResult(payload);
   }
 
