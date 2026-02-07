@@ -19,7 +19,7 @@ cd ritmo-frontend
 
 ### 2. Instale dependências
 ```bash
-npm install
+npm ci
 ```
 
 ### 3. Configure variáveis de ambiente
@@ -81,6 +81,8 @@ npm start                     # Inicia servidor de produção (pós-build)
 # Linting
 npm run lint                  # ESLint check
 npm run lint --fix           # Fixar erros automaticamente
+npm run typecheck            # TypeScript sem cache incremental
+npm run verify               # lint + typecheck + build
 
 # Análise (em breve)
 # npm test                    # Jest + React Testing Library
@@ -97,7 +99,7 @@ npm run lint --fix           # Fixar erros automaticamente
 
 **Solução**:
 ```bash
-npm install
+npm ci
 npm run build  # Regenera tipos
 # Ou force reload VSCode: Ctrl+Shift+P → "TypeScript: Restart TS Server"
 ```
@@ -115,14 +117,16 @@ npm run dev
 make localdev
 ```
 
-### ❌ "Module not found: 'next/image'"
+### ❌ "Module not found: 'next/image'" ou incompatibilidade de versão do Next.js
 
 **Causa**: Next.js versão incompatível
 
 **Solução**:
 ```bash
-npm install next@14.2.21 react@18.3.1
-npm run dev
+rm -rf node_modules .next tsconfig.tsbuildinfo
+npm ci
+npm run verify
+```
 ```
 
 ### ❌ Tema não aplica (modo dark)
@@ -249,7 +253,7 @@ npm run dev:network
 ## 📝 Dica de Desenvolvimento
 
 ### Hot Reload
-Next.js 14 tem hot reload automático:
+Next.js 15 tem hot reload automático:
 - Muda em `.tsx`? → Component atualiza
 - Muda em `.module.css`? → Estilos atualizam
 - Muda em variável de ambiente? → Restart necessário (`npm run dev`)
@@ -271,7 +275,7 @@ DevTools → Network
 
 ## 🔗 Links Úteis
 
-- [Next.js 14 Docs](https://nextjs.org/docs)
+- [Next.js Docs](https://nextjs.org/docs)
 - [React 18 Docs](https://react.dev)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [CSS Variables Reference](https://developer.mozilla.org/en-US/docs/Web/CSS/--*)

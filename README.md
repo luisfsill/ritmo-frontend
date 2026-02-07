@@ -11,7 +11,7 @@ Se você recebeu acesso:
 
 # Agendamento SaaS
 
-Sistema de agendamento online multi-tenant com painel administrativo, integração WhatsApp (UAZAPI), tema responsivo e arquitetura moderna com Next.js 14 (App Router).
+Sistema de agendamento online multi-tenant com painel administrativo, integração WhatsApp (UAZAPI), tema responsivo e arquitetura moderna com Next.js 15 (App Router).
 
 ## Funcionalidades
 - Painel do cliente e painel administrativo
@@ -24,7 +24,7 @@ Sistema de agendamento online multi-tenant com painel administrativo, integraç�
 - Relatórios, agenda, clientes, serviços, equipe, configurações
 
 ## Tecnologias
-- Next.js 14 (App Router)
+- Next.js 15 (App Router)
 - TypeScript
 - CSS Modules + CSS Variables
 - UAZAPI (https://lfsystem.uazapi.com)
@@ -40,7 +40,7 @@ Sistema de agendamento online multi-tenant com painel administrativo, integraç�
 
 2. **Instale as dependências:**
 	```sh
-	npm install
+	npm ci
 	# ou
 	yarn install
 	```

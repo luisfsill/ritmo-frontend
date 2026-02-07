@@ -12,13 +12,11 @@ Guia completo para integração com WhatsApp via UAZAPI na plataforma Ritmo.
 - ✅ Receber webhooks de mensagens/eventos
 - ✅ Enviar mensagens via API
 
-**Fluxo básico:**
+**Fluxo básico (atual):**
 ```
 WhatsApp Device
       ↓ (QR Code / Pair Code)
-UAZAPI Instance
-      ↓ (HTTP API)
-Ritmo Frontend + Backend
+Ritmo Backend (/api/v1/uazapi -> UAZAPI)
       ↓ (Webhook)
 Processa eventos (mensagens, status)
 ```
@@ -30,27 +28,27 @@ Processa eventos (mensagens, status)
 ### Variáveis de Ambiente
 
 ```env
-# URL da API UAZAPI
-NEXT_PUBLIC_UAZAPI_URL=https://lfsystem.uazapi.com
+# Frontend fala com o backend Ritmo
+NEXT_PUBLIC_RITMO_API_URL=https://api.ritmo.com
 
-# Token de admin (para criar instâncias)
-# ⚠️ NUNCA commit em git
+# BACKEND ONLY (no .env do backend)
 UAZAPI_ADMIN_TOKEN=seu-token-secreto-aqui
+UAZAPI_WEBHOOK_SECRET=seu-segredo-de-webhook
 
-# URL para receber webhooks
-NEXT_PUBLIC_UAZAPI_WEBHOOK_URL=http://localhost:3001/webhook
+# BACKEND ONLY
+# BASE_URL=https://api.ritmo.com
 ```
 
 ### Em Produção
 
 ```env
-# Staging
-NEXT_PUBLIC_UAZAPI_URL=https://staging.uazapi.com
+# Staging (backend)
 UAZAPI_ADMIN_TOKEN=staging-token
+UAZAPI_WEBHOOK_SECRET=staging-secret
 
-# Production
-NEXT_PUBLIC_UAZAPI_URL=https://api.uazapi.com
+# Production (backend)
 UAZAPI_ADMIN_TOKEN=production-token
+UAZAPI_WEBHOOK_SECRET=production-secret
 ```
 
 ---
@@ -162,7 +160,7 @@ NEXT_PUBLIC_TOKEN_KEY=custom_key_prod
 ### Admin Token (Criar Instâncias)
 
 ```typescript
-// Usar em server-side (backend) ou com cuidado no frontend
+// Usar somente no backend Ritmo
 const adminToken = process.env.UAZAPI_ADMIN_TOKEN;
 
 // Criar nova instância WhatsApp
@@ -197,16 +195,16 @@ Body: {
 
 ## 🎯 Fluxo: Conectar WhatsApp
 
-### 1. Criar Instância (Backend)
+### 1. Criar Instância (via backend Ritmo)
 
 ```typescript
-// ritmo-backend POST /whatsapp/connect
+// Frontend chama o backend Ritmo, nunca a UAZAPI direto
 const response = await fetch(
-  'https://lfsystem.uazapi.com/instance/init',
+  `${NEXT_PUBLIC_RITMO_API_URL}/api/v1/uazapi/instance/init`,
   {
     method: 'POST',
     headers: {
-      'admintoken': UAZAPI_ADMIN_TOKEN,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -220,12 +218,12 @@ const instance = await response.json();
 // { id, token, qrcode, status, ... }
 ```
 
-### 2. Gerar QR Code (Frontend)
+### 2. Gerar QR Code (Frontend via backend)
 
 ```tsx
 'use client';
 
-import { uazapi, WhatsAppStorage } from '@/lib/uazapi';
+import { uazapi } from '@/lib/uazapi';
 import { useState } from 'react';
 
 export function WhatsAppModal() {
@@ -502,9 +500,10 @@ WhatsAppStorage.clearToken();
 
 ## 📋 Checklist de Integração
 
-- [ ] `NEXT_PUBLIC_UAZAPI_URL` configurada
-- [ ] `UAZAPI_ADMIN_TOKEN` setada (segura)
-- [ ] Backend endpoint `/api/whatsapp/connect` implementado
+- [ ] `NEXT_PUBLIC_RITMO_API_URL` configurada
+- [ ] `UAZAPI_ADMIN_TOKEN` setada no backend
+- [ ] `UAZAPI_WEBHOOK_SECRET` setada no backend
+- [ ] Backend endpoint `/api/v1/uazapi/*` disponível
 - [ ] Webhook endpoint implementado
 - [ ] WhatsAppModal renderizando
 - [ ] QR code aparecendo corretamente

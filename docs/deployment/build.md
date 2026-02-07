@@ -8,8 +8,8 @@ Guia de build, otimização e deploy para produção.
 
 ### 1. Build Local
 ```bash
-# Instalar dependências (se necessário)
-npm install
+# Instalar dependências (determinístico)
+npm ci
 
 # Fazer build
 npm run build
@@ -29,7 +29,7 @@ npm start
 ```
 
 ### 3. Checklist Pré-Deploy
-- [ ] `npm run lint` sem erros
+- [ ] `npm run verify` sem erros
 - [ ] Todas as env vars setadas
 - [ ] Backend acessível
 - [ ] UAZAPI conectando
@@ -124,7 +124,7 @@ docker run -p 3000:3000 -e NEXT_PUBLIC_RITMO_API_URL=... ritmo-frontend:1.0.0
 ## 📊 Performance Tips
 
 ### 1. Code Splitting
-Next.js 14 faz automático:
+Next.js 15 faz automático:
 - Cada página = bundle separado
 - Lazy loading de componentes dinâmicos
 
@@ -262,8 +262,8 @@ jobs:
         with:
           node-version: '18'
       
-      - run: npm install
-      - run: npm run lint
+      - run: npm ci
+      - run: npm run verify
       - run: npm run build
       
       - name: Deploy to Vercel
@@ -279,7 +279,7 @@ jobs:
 1. **Preparação**
    - [ ] Feature branch testada localmente
    - [ ] Code review aprovado
-   - [ ] Testes passam (`npm run lint`)
+   - [ ] Testes passam (`npm run verify`)
 
 2. **Build**
    - [ ] `npm run build` sem erros

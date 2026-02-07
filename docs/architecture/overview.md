@@ -304,13 +304,14 @@ Modal shows "Conectado ✓"
   - `GET /schedule` (listar agenda)
 
 ### UAZAPI (WhatsApp)
-- **Base URL**: `NEXT_PUBLIC_UAZAPI_URL` (padrão: `https://lfsystem.uazapi.com`)
+- **Integração no dashboard**: via backend Ritmo (`/api/v1/uazapi/*`)
 - **Admin Token**: `UAZAPI_ADMIN_TOKEN` (env, apenas backend)
+- **Webhook Secret**: `UAZAPI_WEBHOOK_SECRET` (env backend, obrigatório)
 - **Endpoints principais**:
-  - `POST /instance/init` (criar instância)
-  - `POST /instance/connect` (gerar QR)
-  - `POST /webhook` (configurar webhook)
-  - POST /send/text (enviar mensagem)
+  - `POST /api/v1/uazapi/instance/init` (criar instância)
+  - `POST /api/v1/uazapi/instance/connect` (gerar QR)
+  - `GET /api/v1/uazapi/instance/status` (status/QR)
+  - `POST /api/v1/uazapi/webhook` (configurar webhook)
 
 ---
 
