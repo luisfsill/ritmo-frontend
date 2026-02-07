@@ -12,14 +12,24 @@ Guia completo para integração com WhatsApp via UAZAPI na plataforma Ritmo.
 - ✅ Receber webhooks de mensagens/eventos
 - ✅ Enviar mensagens via API
 
-**Fluxo básico (atual):**
+**Fluxo básico (AUTOMÁTICO):**
 ```
-WhatsApp Device
-      ↓ (QR Code / Pair Code)
-Ritmo Backend (/api/v1/uazapi -> UAZAPI)
-      ↓ (Webhook)
-Processa eventos (mensagens, status)
+1. Usuário abre WhatsAppModal
+   ↓
+2. Gera QR Code via Backend → UAZAPI
+   ↓
+3. Usuário escaneia QR no WhatsApp
+   ↓
+4. 🤖 AUTOMÁTICO: Detecta conexão (polling 3s)
+   ↓
+5. 🤖 AUTOMÁTICO: Configura webhook (3 tentativas)
+   ↓
+6. ✅ WhatsApp conectado + Webhook ativo
+   ↓
+7. Mensagens chegam via webhook /api/webhooks/uazapi/{slug}
 ```
+
+**✨ NOVIDADE (v2.0):** Todo o fluxo após escanear o QR code é **100% automatizado** - não requer intervenção manual.
 
 ---
 
@@ -33,11 +43,20 @@ NEXT_PUBLIC_RITMO_API_URL=https://api.ritmo.com
 
 # BACKEND ONLY (no .env do backend)
 UAZAPI_ADMIN_TOKEN=seu-token-secreto-aqui
-UAZAPI_WEBHOOK_SECRET=seu-segredo-de-webhook
+UAZAPI_WEBHOOK_SECRET=seu-segredo-de-webhook  # ⚠️ OBRIGATÓRIO para automação
+UAZAPI_BASE_URL=https://free.uazapi.com        # Opcional (padrão: http://127.0.0.1:8090)
 
 # BACKEND ONLY
-# BASE_URL=https://api.ritmo.com
+# BASE_URL=https://api.ritmo.com  # ⚠️ Necessário para webhook URL
 ```
+
+### ⚠️ Pré-requisitos para Automação
+
+Para que o fluxo seja 100% automático, certifique-se de:
+
+1. ✅ `UAZAPI_WEBHOOK_SECRET` configurado no backend
+2. ✅ `BASE_URL` acessível publicamente (não pode ser localhost)
+3. ✅ Backend exposto na internet (use ngrok em dev: `make localdev-ngrok`)
 
 ### Em Produção
 

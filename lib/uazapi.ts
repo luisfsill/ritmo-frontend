@@ -112,7 +112,7 @@ export interface UazapiAdoptTokenData {
 
 export interface UazapiCapabilitiesData {
   enabled: boolean;
-  reason?: 'canary_disabled' | 'missing_webhook_secret' | 'ok' | string;
+  reason?: 'missing_webhook_secret' | 'ok' | string;
 }
 
 function asOperationResult<T>(payload: T | PendingCommandResponse): UazapiResult<T> {

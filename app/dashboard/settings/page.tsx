@@ -63,7 +63,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [whatsappStatus, setWhatsappStatus] = useState<
-        'connected' | 'disconnected' | 'loading' | 'pending' | 'error' | 'rollout' | 'config_required'
+        'connected' | 'disconnected' | 'loading' | 'pending' | 'error' | 'config_required'
     >('loading');
     const [whatsappStatusHint, setWhatsappStatusHint] = useState<string | null>(null);
     const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus>({ connected: false });
@@ -129,8 +129,8 @@ export default function SettingsPage() {
                             setWhatsappStatus('disconnected');
                             setWhatsappStatusHint('Webhook pendente no servidor. Você pode conectar, mas eventos podem não chegar.');
                         } else {
-                            setWhatsappStatus('rollout');
-                            setWhatsappStatusHint('Integração temporariamente indisponível para este tenant.');
+                            setWhatsappStatus('error');
+                            setWhatsappStatusHint('Integração temporariamente indisponível.');
                         }
                     } else {
                         setWhatsappStatusHint(null);
@@ -146,9 +146,6 @@ export default function SettingsPage() {
                     if (message.includes('uazapi_token_missing')) {
                         setWhatsappStatus('disconnected');
                         setWhatsappStatusHint(null);
-                    } else if (message.includes('whatsapp_qr_feature_disabled')) {
-                        setWhatsappStatus('rollout');
-                        setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
                     } else if (message.includes('uazapi_webhook_secret_missing')) {
                         setWhatsappStatus('disconnected');
                         setWhatsappStatusHint('Webhook pendente no servidor. Você pode conectar, mas eventos podem não chegar.');
@@ -511,10 +508,10 @@ export default function SettingsPage() {
         );
     }
 
-    const whatsappCanConfigure = whatsappStatus !== 'loading' && whatsappStatus !== 'rollout' && whatsappStatus !== 'config_required';
+    const whatsappCanConfigure = whatsappStatus !== 'loading' && whatsappStatus !== 'config_required';
     const whatsappButtonTitle = whatsappCanConfigure
         ? 'Configurar'
-        : (whatsappStatusHint || 'Integração em rollout gradual');
+        : (whatsappStatusHint || 'Integração temporariamente indisponível');
 
     return (
         <div className={styles.page}>
@@ -685,8 +682,6 @@ export default function SettingsPage() {
                                         <span className={styles.integrationStatusLoading}>Verificando...</span>
                                     ) : whatsappStatus === 'pending' ? (
                                         <span className={styles.integrationStatusLoading}>Sincronizando...</span>
-                                    ) : whatsappStatus === 'rollout' ? (
-                                        <span className={styles.integrationStatusLoading}>Em rollout</span>
                                     ) : whatsappStatus === 'config_required' ? (
                                         <span className={styles.integrationStatusDisconnected}>Configuração pendente</span>
                                     ) : whatsappStatus === 'connected' ? (
