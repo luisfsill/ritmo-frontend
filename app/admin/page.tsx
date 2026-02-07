@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Building2, Users, Activity, TrendingUp, AlertCircle } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -99,18 +100,18 @@ export default function AdminDashboard() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Ações Rápidas</h2>
         <div className={styles.actionsGrid}>
-          <a href="/admin/tenants" className={styles.actionCard}>
+          <Link href="/admin/tenants" className={styles.actionCard}>
             <Building2 size={24} />
             <span>Gerenciar Empresas</span>
-          </a>
-          <a href="/admin/users" className={styles.actionCard}>
+          </Link>
+          <Link href="/admin/users" className={styles.actionCard}>
             <Users size={24} />
             <span>Gerenciar Usuários</span>
-          </a>
-          <a href="/admin/settings" className={styles.actionCard}>
+          </Link>
+          <Link href="/admin/settings" className={styles.actionCard}>
             <Activity size={24} />
             <span>Configurações Globais</span>
-          </a>
+          </Link>
         </div>
       </div>
 
