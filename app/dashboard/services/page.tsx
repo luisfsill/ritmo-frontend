@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, Clock, DollarSign, Loader2 } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './services.module.css';
 
@@ -24,8 +24,6 @@ export default function ServicesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [editingService, setEditingService] = useState<Service | null>(null);
 
     useEffect(() => {
         loadServices();
@@ -72,6 +70,10 @@ export default function ServicesPage() {
         service.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleOpenServiceForm = () => {
+        alert('Cadastro e edição de serviços estarão disponíveis em breve nesta tela.');
+    };
+
     const formatDuration = (minutes: number) => {
         if (minutes < 60) return `${minutes} min`;
         const hours = Math.floor(minutes / 60);
@@ -99,10 +101,7 @@ export default function ServicesPage() {
                 </div>
                 <Button
                     leftIcon={<Plus size={18} />}
-                    onClick={() => {
-                        setEditingService(null);
-                        setShowModal(true);
-                    }}
+                    onClick={handleOpenServiceForm}
                 >
                     Novo Serviço
                 </Button>
@@ -146,7 +145,7 @@ export default function ServicesPage() {
                             : 'Adicione seu primeiro serviço para começar'}
                     </p>
                     {!searchQuery && (
-                        <Button onClick={() => setShowModal(true)}>
+                        <Button onClick={handleOpenServiceForm}>
                             <Plus size={18} />
                             Adicionar Serviço
                         </Button>
@@ -181,10 +180,7 @@ export default function ServicesPage() {
                             <div className={styles.cardActions}>
                                 <button
                                     className={styles.actionButton}
-                                    onClick={() => {
-                                        setEditingService(service);
-                                        setShowModal(true);
-                                    }}
+                                    onClick={handleOpenServiceForm}
                                     title="Editar"
                                 >
                                     <Edit2 size={16} />

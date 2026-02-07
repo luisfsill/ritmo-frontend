@@ -7,7 +7,7 @@ import { WhatsAppModal } from '@/components/ui/WhatsAppModal';
 import { useTheme } from '@/lib/theme-context';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
-import { uazapi, WhatsAppStorage } from '@/lib/uazapi';
+import { uazapi } from '@/lib/uazapi';
 import styles from './settings.module.css';
 
 type Tab = 'profile' | 'business' | 'notifications' | 'appearance' | 'integrations' | 'security';
@@ -42,7 +42,10 @@ export default function SettingsPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
-    const [whatsappStatus, setWhatsappStatus] = useState<'connected' | 'disconnected' | 'loading'>('loading');
+    const [whatsappStatus, setWhatsappStatus] = useState<
+        'connected' | 'disconnected' | 'loading' | 'pending' | 'error' | 'rollout' | 'config_required'
+    >('loading');
+    const [whatsappStatusHint, setWhatsappStatusHint] = useState<string | null>(null);
     const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus>({ connected: false });
     const [googleCalendarLoading, setGoogleCalendarLoading] = useState(false);
     
@@ -58,17 +61,44 @@ export default function SettingsPage() {
                     setTenantProfile(profileData);
                 }
                 
-                // Verifica status do WhatsApp
-                const whatsappToken = WhatsAppStorage.getToken();
-                if (whatsappToken) {
-                    try {
-                        const status = await uazapi.getStatus(whatsappToken);
-                        setWhatsappStatus(status.status.connected ? 'connected' : 'disconnected');
-                    } catch {
-                        setWhatsappStatus('disconnected');
+                // Verifica status do WhatsApp via backend (fonte de verdade do tenant)
+                try {
+                    const capabilities = await uazapi.getCapabilities();
+                    if (!capabilities.enabled) {
+                        if (capabilities.reason === 'canary_disabled') {
+                            setWhatsappStatus('rollout');
+                            setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
+                        } else if (capabilities.reason === 'missing_webhook_secret') {
+                            setWhatsappStatus('config_required');
+                            setWhatsappStatusHint('Integração temporariamente indisponível: configuração de webhook pendente.');
+                        } else {
+                            setWhatsappStatus('rollout');
+                            setWhatsappStatusHint('Integração temporariamente indisponível para este tenant.');
+                        }
+                    } else {
+                        setWhatsappStatusHint(null);
+                        const status = await uazapi.getStatus();
+                        if (status.kind === 'pending') {
+                            setWhatsappStatus('pending');
+                        } else {
+                            setWhatsappStatus(status.data.status.status.connected && status.data.status.status.loggedIn ? 'connected' : 'disconnected');
+                        }
                     }
-                } else {
-                    setWhatsappStatus('disconnected');
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : '';
+                    if (message.includes('uazapi_token_missing')) {
+                        setWhatsappStatus('disconnected');
+                        setWhatsappStatusHint(null);
+                    } else if (message.includes('whatsapp_qr_feature_disabled')) {
+                        setWhatsappStatus('rollout');
+                        setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
+                    } else if (message.includes('uazapi_webhook_secret_missing')) {
+                        setWhatsappStatus('config_required');
+                        setWhatsappStatusHint('Integração temporariamente indisponível: configuração de webhook pendente.');
+                    } else {
+                        setWhatsappStatus('error');
+                        setWhatsappStatusHint(null);
+                    }
                 }
 
                 // Verifica status do Google Calendar
@@ -91,10 +121,18 @@ export default function SettingsPage() {
         const urlParams = new URLSearchParams(window.location.search);
         const googleCallback = urlParams.get('google_calendar');
         if (googleCallback === 'success') {
-            setGoogleCalendarStatus({ connected: true });
-            setActiveTab('integrations');
-            // Limpa o parâmetro da URL
-            window.history.replaceState({}, '', window.location.pathname);
+            void (async () => {
+                try {
+                    const calendarStatus = await api.get<GoogleCalendarStatus>('/api/v1/integrations/google-calendar/status');
+                    setGoogleCalendarStatus(calendarStatus);
+                } catch {
+                    setGoogleCalendarStatus({ connected: true });
+                } finally {
+                    setActiveTab('integrations');
+                    // Limpa o parâmetro da URL
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            })();
         } else if (googleCallback === 'error') {
             alert('Erro ao conectar com Google Calendar. Tente novamente.');
             window.history.replaceState({}, '', window.location.pathname);
@@ -127,8 +165,11 @@ export default function SettingsPage() {
     const handleConnectGoogleCalendar = async () => {
         setGoogleCalendarLoading(true);
         try {
+            const nextPath = '/dashboard/settings?google_calendar=success';
             // Obtém a URL de autorização do backend
-            const response = await api.get<{ auth_url: string }>('/api/v1/integrations/google-calendar/auth-url');
+            const response = await api.get<{ auth_url: string }>(
+                `/api/v1/integrations/google-calendar/auth-url?next=${encodeURIComponent(nextPath)}`
+            );
             // Redireciona para o Google OAuth
             window.location.href = response.auth_url;
         } catch (err) {
@@ -150,7 +191,7 @@ export default function SettingsPage() {
             await api.post('/api/v1/integrations/google-calendar/disconnect', {});
             setGoogleCalendarStatus({ connected: false });
             alert('Google Calendar desconectado com sucesso!');
-        } catch (err) {
+        } catch {
             alert('Erro ao desconectar Google Calendar. Tente novamente.');
         } finally {
             setGoogleCalendarLoading(false);
@@ -167,6 +208,11 @@ export default function SettingsPage() {
             </div>
         );
     }
+
+    const whatsappCanConfigure = whatsappStatus !== 'loading' && whatsappStatus !== 'rollout' && whatsappStatus !== 'config_required';
+    const whatsappButtonTitle = whatsappCanConfigure
+        ? 'Configurar'
+        : (whatsappStatusHint || 'Integração em rollout gradual');
 
     return (
         <div className={styles.page}>
@@ -317,16 +363,29 @@ export default function SettingsPage() {
                                     <span className={styles.integrationName}>WhatsApp Business</span>
                                     {whatsappStatus === 'loading' ? (
                                         <span className={styles.integrationStatusLoading}>Verificando...</span>
+                                    ) : whatsappStatus === 'pending' ? (
+                                        <span className={styles.integrationStatusLoading}>Sincronizando...</span>
+                                    ) : whatsappStatus === 'rollout' ? (
+                                        <span className={styles.integrationStatusLoading}>Em rollout</span>
+                                    ) : whatsappStatus === 'config_required' ? (
+                                        <span className={styles.integrationStatusDisconnected}>Configuração pendente</span>
                                     ) : whatsappStatus === 'connected' ? (
                                         <span className={styles.integrationStatus}>Conectado</span>
+                                    ) : whatsappStatus === 'error' ? (
+                                        <span className={styles.integrationStatusDisconnected}>Erro ao verificar</span>
                                     ) : (
                                         <span className={styles.integrationStatusDisconnected}>Não conectado</span>
+                                    )}
+                                    {whatsappStatusHint && (
+                                        <span className={styles.integrationStatusLoading}>{whatsappStatusHint}</span>
                                     )}
                                 </div>
                                 <Button 
                                     variant={whatsappStatus === 'connected' ? 'secondary' : 'primary'} 
                                     size="sm"
+                                    disabled={!whatsappCanConfigure}
                                     onClick={() => setWhatsappModalOpen(true)}
+                                    title={whatsappButtonTitle}
                                 >
                                     Configurar
                                 </Button>

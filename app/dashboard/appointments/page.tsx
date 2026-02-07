@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
@@ -67,11 +67,7 @@ export default function AppointmentsPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-    useEffect(() => {
-        loadAppointments();
-    }, [selectedDate]);
-
-    const loadAppointments = async () => {
+    const loadAppointments = useCallback(async () => {
         setIsLoading(true);
         try {
             const [data, catalogData, clientsData] = await Promise.all([
@@ -95,12 +91,16 @@ export default function AppointmentsPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [selectedDate]);
+
+    useEffect(() => {
+        void loadAppointments();
+    }, [loadAppointments]);
 
     const handleCancel = async (id: string) => {
         if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
         try {
-            await api.post(`/api/v1/appointments/${id}/cancel`);
+            await api.post(`/api/v1/appointments/${id}/cancel`, { reason: 'Cancelado pelo estabelecimento' });
             setAppointments(appointments.map(a => a.id === id ? { ...a, status: 'canceled' } : a));
         } catch (err) {
             const apiError = err as ApiError;
