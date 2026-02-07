@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { X, MessageCircle, Loader2, RefreshCw, Smartphone, AlertCircle, Check, Unplug, Trash2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
+import { X, MessageCircle, Loader2, RefreshCw, Smartphone, AlertCircle, Check, Unplug, Trash2, Clock3 } from 'lucide-react';
+import { toDataURL } from 'qrcode/lib/browser';
 import { uazapi, WhatsAppStorage, UazapiInstance, UazapiStatus } from '@/lib/uazapi';
+import { PendingCommandResponse, waitFrontCommand } from '@/lib/front-commands';
 import { useAuth } from '@/lib/auth-context';
 import styles from './WhatsAppModal.module.css';
 
@@ -13,258 +16,406 @@ interface WhatsAppModalProps {
 
 type ConnectionState = 'loading' | 'no-instance' | 'disconnected' | 'connecting' | 'connected' | 'error';
 
+function normalizeError(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  if (typeof err === 'object' && err && 'message' in err) {
+    const message = (err as { message?: string }).message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+  return 'Erro inesperado no fluxo de integração do WhatsApp';
+}
+
+function humanizeUazapiError(message: string): string {
+  if (message.includes('whatsapp_qr_feature_disabled')) {
+    return 'A integração de QR do WhatsApp está em rollout gradual para este tenant.';
+  }
+  if (message.includes('uazapi_webhook_secret_missing')) {
+    return 'Integração temporariamente indisponível: configuração de webhook pendente no backend.';
+  }
+  return message;
+}
+
 export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   const { user } = useAuth();
   const [state, setState] = useState<ConnectionState>('loading');
   const [instance, setInstance] = useState<UazapiInstance | null>(null);
   const [statusData, setStatusData] = useState<UazapiStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingCommand, setPendingCommand] = useState<PendingCommandResponse | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [qrImageSrc, setQrImageSrc] = useState<string | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  const statusPollingInFlight = useRef(false);
 
-  // Tenant ID do usuário logado
   const tenantId = user?.tenant_id || 'demo-tenant';
   const businessName = user?.business_name || user?.name || 'Meu Negócio';
 
-  // Função para gerar slug a partir do nome
   const generateSlug = (name: string): string => {
     return name
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^a-z0-9]+/g, '-') // Substitui caracteres especiais por hífen
-      .replace(/^-|-$/g, '') // Remove hífens do início e fim
-      .slice(0, 20); // Limita tamanho
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 20);
   };
 
-  // Função para configurar webhook
-  const configureWebhook = async (token: string) => {
-    const webhookUrl = process.env.NEXT_PUBLIC_UAZAPI_WEBHOOK_URL;
-    if (!webhookUrl) {
-      console.log('Webhook URL não configurada no ambiente');
-      return false;
+  const waitPendingCommand = useCallback(async (pending: PendingCommandResponse): Promise<boolean> => {
+    setPendingCommand(pending);
+    const settled = await waitFrontCommand(pending.command_id);
+
+    if (settled.kind === 'committed') {
+      setPendingCommand(null);
+      return true;
     }
 
+    setPendingCommand(null);
+    setState('error');
+    setError(humanizeUazapiError(settled.message));
+    return false;
+  }, []);
+
+  const applyStatus = useCallback((status: UazapiStatus) => {
+    setInstance(status.instance);
+    setStatusData(status);
+
+    if (status.status.connected && status.status.loggedIn) {
+      setState('connected');
+      return;
+    }
+
+    if (status.instance.status === 'connecting' || status.instance.qrcode || status.instance.paircode) {
+      setState('connecting');
+      return;
+    }
+
+    setState('disconnected');
+  }, []);
+
+  const configureWebhook = useCallback(async () => {
     try {
-      await uazapi.setWebhook(token, {
+      const response = await uazapi.setWebhook({
         enabled: true,
-        url: webhookUrl,
         events: ['messages', 'connection'],
         excludeMessages: ['wasSentByApi'],
       });
-      console.log('✅ Webhook configurado com sucesso:', webhookUrl);
-      return true;
-    } catch (err) {
-      console.error('❌ Erro ao configurar webhook:', err);
-      return false;
-    }
-  };
 
-  // Busca instância existente ou status
+      if (response.kind === 'pending') {
+        setPendingCommand(response.pending);
+      }
+    } catch (err) {
+      console.error('Erro ao configurar webhook automaticamente:', err);
+    }
+  }, []);
+
   const loadInstanceStatus = useCallback(async () => {
     setError(null);
-    
-    try {
-      // Primeiro tenta pegar o token salvo localmente
-      let token = WhatsAppStorage.getToken();
-      let currentInstance: UazapiInstance | null = null;
-      
-      // Se não tem token local, busca pelo tenant
-      if (!token) {
-        currentInstance = await uazapi.findInstanceByTenant(tenantId);
-        if (currentInstance) {
-          token = currentInstance.token;
-          WhatsAppStorage.saveToken(token);
-        }
-      }
 
-      if (!token) {
-        setState('no-instance');
-        setInstance(null);
+    let hasTriedLegacyToken = false;
+    let shouldRetry = true;
+
+    while (shouldRetry) {
+      shouldRetry = false;
+
+      try {
+        const statusResult = await uazapi.getStatus();
+
+        if (statusResult.kind === 'pending') {
+          const committed = await waitPendingCommand(statusResult.pending);
+          if (committed) {
+            shouldRetry = true;
+          }
+          continue;
+        }
+
+        setPendingCommand(null);
+        const status = statusResult.data.status;
+        applyStatus(status);
+
+        if (status.status.connected && status.status.loggedIn) {
+          await configureWebhook();
+        }
+
+        return;
+      } catch (err) {
+        const message = normalizeError(err);
+
+        if (message.includes('uazapi_token_missing') && !hasTriedLegacyToken) {
+          hasTriedLegacyToken = true;
+          const legacyToken = WhatsAppStorage.getToken();
+
+          if (!legacyToken) {
+            setState('no-instance');
+            setInstance(null);
+            setStatusData(null);
+            return;
+          }
+
+          try {
+            const adoptResult = await uazapi.adoptToken(legacyToken);
+
+            if (adoptResult.kind === 'pending') {
+              const adopted = await waitPendingCommand(adoptResult.pending);
+              if (adopted) {
+                WhatsAppStorage.clearToken();
+                shouldRetry = true;
+              }
+              continue;
+            }
+
+            WhatsAppStorage.clearToken();
+            shouldRetry = true;
+            continue;
+          } catch (adoptErr) {
+            setState('error');
+            setError(humanizeUazapiError(normalizeError(adoptErr)));
+            return;
+          }
+        }
+
+        setState('error');
+        setError(humanizeUazapiError(message));
         return;
       }
-
-      // Busca o status da instância
-      const status = await uazapi.getStatus(token);
-      setInstance(status.instance);
-      setStatusData(status);
-
-      // Define o estado baseado no status
-      if (status.status.connected && status.status.loggedIn) {
-        setState('connected');
-        
-        // Configura webhook automaticamente quando conectado
-        await configureWebhook(token);
-      } else if (status.instance.status === 'connecting' || status.instance.qrcode) {
-        setState('connecting');
-      } else {
-        setState('disconnected');
-      }
-    } catch (err) {
-      console.error('Error loading instance:', err);
-      // Se der erro de token inválido, limpa o storage
-      if (err instanceof Error && err.message.includes('not found')) {
-        WhatsAppStorage.clearToken();
-        setState('no-instance');
-      } else {
-        setState('error');
-        setError(err instanceof Error ? err.message : 'Erro ao carregar instância');
-      }
     }
-  }, [tenantId]);
+  }, [applyStatus, configureWebhook, waitPendingCommand]);
 
-  // Carrega status inicial
   useEffect(() => {
     if (isOpen) {
-      loadInstanceStatus();
+      setState('loading');
+      setBlockedReason(null);
+      void (async () => {
+        try {
+          const capabilities = await uazapi.getCapabilities();
+          if (!capabilities.enabled) {
+            const reason = capabilities.reason || 'canary_disabled';
+            setBlockedReason(reason);
+            setState('error');
+            setError(humanizeUazapiError(reason));
+            return;
+          }
+          await loadInstanceStatus();
+        } catch (err) {
+          setState('error');
+          setError(humanizeUazapiError(normalizeError(err)));
+        }
+      })();
     }
   }, [isOpen, loadInstanceStatus]);
 
-  // Polling para atualizar QR code quando conectando
+  useEffect(() => {
+    let isCancelled = false;
+
+    const renderQr = async () => {
+      const qrRaw = instance?.qrcode?.trim();
+      if (!qrRaw) {
+        setQrImageSrc(null);
+        return;
+      }
+
+      if (qrRaw.startsWith('data:image/') || qrRaw.startsWith('http://') || qrRaw.startsWith('https://')) {
+        setQrImageSrc(qrRaw);
+        return;
+      }
+
+      try {
+        const image = await toDataURL(qrRaw, { margin: 1, width: 280 });
+        if (!isCancelled) {
+          setQrImageSrc(image);
+        }
+      } catch {
+        if (!isCancelled) {
+          setQrImageSrc(null);
+          setError('Nao foi possivel renderizar o QR code retornado pela UAZAPI.');
+        }
+      }
+    };
+
+    void renderQr();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [instance?.qrcode]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (isOpen && state === 'connecting') {
       interval = setInterval(async () => {
+        if (statusPollingInFlight.current) {
+          return;
+        }
+        statusPollingInFlight.current = true;
         try {
-          const token = WhatsAppStorage.getToken();
-          if (token) {
-            const status = await uazapi.getStatus(token);
-            setInstance(status.instance);
-            setStatusData(status);
-            
-            if (status.status.connected && status.status.loggedIn) {
-              setState('connected');
-              
-              // Configura webhook assim que conectar
-              await configureWebhook(token);
-            }
+          const statusResult = await uazapi.getStatus();
+          if (statusResult.kind === 'pending') {
+            setPendingCommand(statusResult.pending);
+            return;
+          }
+
+          const status = statusResult.data.status;
+          applyStatus(status);
+
+          if (status.status.connected && status.status.loggedIn) {
+            await configureWebhook();
           }
         } catch (err) {
-          console.error('Polling error:', err);
+          console.error('Erro no polling de status do WhatsApp:', err);
+        } finally {
+          statusPollingInFlight.current = false;
         }
-      }, 3000); // Atualiza a cada 3 segundos
+      }, 3000);
     }
 
     return () => {
-      if (interval) clearInterval(interval);
+      statusPollingInFlight.current = false;
+      if (interval) {
+        clearInterval(interval);
+      }
     };
-  }, [isOpen, state]);
+  }, [isOpen, state, applyStatus, configureWebhook]);
 
-  // Refresh manual
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await loadInstanceStatus();
     setIsRefreshing(false);
   };
 
-  // Criar nova instância
   const handleCreateInstance = async () => {
     setActionLoading('create');
     setError(null);
 
     try {
-      const instanceName = generateSlug(businessName);
-      const result = await uazapi.createInstance(instanceName, tenantId);
-      
-      WhatsAppStorage.saveToken(result.token);
-      setInstance(result.instance);
-      setState('disconnected');
+      const result = await uazapi.createInstance(generateSlug(businessName), tenantId);
+
+      if (result.kind === 'pending') {
+        const committed = await waitPendingCommand(result.pending);
+        if (committed) {
+          await loadInstanceStatus();
+        }
+        return;
+      }
+
+      await loadInstanceStatus();
     } catch (err) {
-      console.error('Error creating instance:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao criar instância');
+      setError(humanizeUazapiError(normalizeError(err)));
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Conectar (gerar QR code)
   const handleConnect = async () => {
     setActionLoading('connect');
     setError(null);
 
     try {
-      const token = WhatsAppStorage.getToken();
-      if (!token) throw new Error('Token não encontrado');
+      const result = await uazapi.connect();
 
-      const result = await uazapi.connect(token);
-      setInstance(result.instance);
+      if (result.kind === 'pending') {
+        const committed = await waitPendingCommand(result.pending);
+        if (committed) {
+          await loadInstanceStatus();
+        }
+        return;
+      }
+
+      if (result.data.connect.instance) {
+        setInstance(result.data.connect.instance);
+      }
+
       setState('connecting');
-      
-      // Atualiza status imediatamente
-      setTimeout(loadInstanceStatus, 1000);
+      setTimeout(() => {
+        void loadInstanceStatus();
+      }, 1000);
     } catch (err) {
-      console.error('Error connecting:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao conectar');
+      setError(humanizeUazapiError(normalizeError(err)));
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Desconectar
   const handleDisconnect = async () => {
     if (!confirm('Tem certeza que deseja desconectar o WhatsApp?')) return;
-    
+
     setActionLoading('disconnect');
     setError(null);
 
     try {
-      const token = WhatsAppStorage.getToken();
-      if (!token) throw new Error('Token não encontrado');
+      const result = await uazapi.disconnect();
+      if (result.kind === 'pending') {
+        const committed = await waitPendingCommand(result.pending);
+        if (committed) {
+          await loadInstanceStatus();
+        }
+        return;
+      }
 
-      await uazapi.disconnect(token);
       setState('disconnected');
       await loadInstanceStatus();
     } catch (err) {
-      console.error('Error disconnecting:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao desconectar');
+      setError(humanizeUazapiError(normalizeError(err)));
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Deletar instância
   const handleDelete = async () => {
     if (!confirm('Tem certeza que deseja excluir a integração do WhatsApp? Esta ação não pode ser desfeita.')) return;
-    
+
     setActionLoading('delete');
     setError(null);
 
     try {
-      const token = WhatsAppStorage.getToken();
-      if (!token) throw new Error('Token não encontrado');
+      const result = await uazapi.deleteInstance();
+      if (result.kind === 'pending') {
+        const committed = await waitPendingCommand(result.pending);
+        if (committed) {
+          await loadInstanceStatus();
+        }
+        return;
+      }
 
-      await uazapi.deleteInstance(token);
       WhatsAppStorage.clearToken();
       setInstance(null);
+      setStatusData(null);
       setState('no-instance');
+      setQrImageSrc(null);
     } catch (err) {
-      console.error('Error deleting:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao excluir instância');
+      setError(humanizeUazapiError(normalizeError(err)));
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Testar conexão
   const handleTestConnection = async () => {
     setActionLoading('test');
     setError(null);
 
     try {
-      const token = WhatsAppStorage.getToken();
-      if (!token) throw new Error('Token não encontrado');
+      const result = await uazapi.getStatus();
+      if (result.kind === 'pending') {
+        const committed = await waitPendingCommand(result.pending);
+        if (!committed) {
+          return;
+        }
+        await loadInstanceStatus();
+        return;
+      }
 
-      const status = await uazapi.getStatus(token);
-      
-      if (status.status.connected) {
-        alert('✅ Conexão funcionando corretamente!');
+      const status = result.data.status;
+      if (status.status.connected && status.status.loggedIn) {
+        alert('Conexao funcionando corretamente.');
       } else {
-        alert('⚠️ WhatsApp não está conectado');
+        alert('WhatsApp nao esta conectado.');
       }
     } catch (err) {
-      console.error('Error testing:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao testar conexão');
+      setError(humanizeUazapiError(normalizeError(err)));
     } finally {
       setActionLoading(null);
     }
@@ -273,7 +424,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   if (!isOpen) return null;
 
   const renderContent = () => {
-    // Loading inicial
     if (state === 'loading') {
       return (
         <div className={styles.loading}>
@@ -283,13 +433,12 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       );
     }
 
-    // Sem instância - mostrar botão de criar
     if (state === 'no-instance') {
       return (
         <div className={styles.noInstance}>
           <Smartphone size={48} />
-          <h3>Nenhuma instância configurada</h3>
-          <p>Crie uma instância do WhatsApp para começar a enviar notificações automáticas.</p>
+          <h3>Nenhuma instancia configurada</h3>
+          <p>Crie uma instancia do WhatsApp para comecar a enviar notificacoes automaticas.</p>
           <button
             className={`${styles.actionButton} ${styles.connectButton}`}
             onClick={handleCreateInstance}
@@ -300,13 +449,12 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             ) : (
               <MessageCircle size={18} />
             )}
-            Criar Instância
+            Criar Instancia
           </button>
         </div>
       );
     }
 
-    // Status Badge
     const getStatusBadge = () => {
       switch (state) {
         case 'connected':
@@ -320,7 +468,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           return (
             <div className={`${styles.statusBadge} ${styles.statusConnecting}`}>
               <span className={styles.statusIcon} />
-              Aguardando conexão
+              Aguardando conexao
             </div>
           );
         default:
@@ -335,131 +483,97 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
 
     return (
       <>
-        {/* Status Section */}
         <div className={styles.statusSection}>
           {getStatusBadge()}
-          
+
           {state === 'connected' && instance && (
             <div className={styles.profileInfo}>
               {instance.profilePicUrl ? (
-                <img src={instance.profilePicUrl} alt="Profile" className={styles.profilePic} />
+                <Image
+                  src={instance.profilePicUrl}
+                  alt="Profile"
+                  className={styles.profilePic}
+                  width={48}
+                  height={48}
+                  unoptimized
+                />
               ) : (
                 <div className={styles.profilePlaceholder}>
                   <Smartphone size={32} />
                 </div>
               )}
-              {instance.profileName && (
-                <span className={styles.profileName}>{instance.profileName}</span>
-              )}
-              {statusData?.status.jid?.user && (
-                <span className={styles.profilePhone}>+{statusData.status.jid.user}</span>
-              )}
+              {instance.profileName && <span className={styles.profileName}>{instance.profileName}</span>}
+              {statusData?.status.jid?.user && <span className={styles.profilePhone}>+{statusData.status.jid.user}</span>}
             </div>
           )}
         </div>
 
-        {/* QR Code Section - só mostra quando conectando */}
-        {state === 'connecting' && instance?.qrcode && (
+        {state === 'connecting' && (
           <div className={styles.qrSection}>
-            <div className={styles.qrCode}>
-              <img src={instance.qrcode} alt="QR Code" />
-            </div>
-            
-            {instance.paircode && (
+            {qrImageSrc ? (
+              <div className={styles.qrCode}>
+                <Image src={qrImageSrc} alt="QR Code" width={280} height={280} unoptimized />
+              </div>
+            ) : (
+              <div className={styles.loading}>
+                <Loader2 size={26} className={styles.spinner} />
+                <span className={styles.loadingText}>Aguardando QR code...</span>
+              </div>
+            )}
+
+            {instance?.paircode && (
               <div className={styles.pairCode}>
-                <span>Ou use o código:</span>
+                <span>Ou use o codigo:</span>
                 <div className={styles.pairCodeValue}>{instance.paircode}</div>
               </div>
             )}
-            
+
             <div className={styles.qrInstructions}>
               <p>Escaneie o QR code com seu WhatsApp:</p>
               <ol>
                 <li>Abra o WhatsApp no celular</li>
-                <li>Toque em Menu (⋮) ou Configurações</li>
+                <li>Toque em Menu (⋮) ou Configuracoes</li>
                 <li>Selecione &quot;Aparelhos Conectados&quot;</li>
                 <li>Toque em &quot;Conectar um aparelho&quot;</li>
-                <li>Aponte a câmera para o QR code</li>
+                <li>Aponte a camera para o QR code</li>
               </ol>
             </div>
           </div>
         )}
 
-        {/* Actions */}
         <div className={styles.actions}>
           {state === 'disconnected' && (
-            <button
-              className={`${styles.actionButton} ${styles.connectButton}`}
-              onClick={handleConnect}
-              disabled={!!actionLoading}
-            >
-              {actionLoading === 'connect' ? (
-                <Loader2 size={18} className={styles.spinner} />
-              ) : (
-                <MessageCircle size={18} />
-              )}
+            <button className={`${styles.actionButton} ${styles.connectButton}`} onClick={handleConnect} disabled={!!actionLoading}>
+              {actionLoading === 'connect' ? <Loader2 size={18} className={styles.spinner} /> : <MessageCircle size={18} />}
               Conectar WhatsApp
             </button>
           )}
 
           {state === 'connecting' && (
-            <button
-              className={`${styles.actionButton} ${styles.testButton}`}
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              {isRefreshing ? (
-                <Loader2 size={18} className={styles.spinner} />
-              ) : (
-                <RefreshCw size={18} />
-              )}
+            <button className={`${styles.actionButton} ${styles.testButton}`} onClick={handleRefresh} disabled={isRefreshing}>
+              {isRefreshing ? <Loader2 size={18} className={styles.spinner} /> : <RefreshCw size={18} />}
               Atualizar QR Code
             </button>
           )}
 
           {state === 'connected' && (
             <>
-              <button
-                className={`${styles.actionButton} ${styles.testButton}`}
-                onClick={handleTestConnection}
-                disabled={!!actionLoading}
-              >
-                {actionLoading === 'test' ? (
-                  <Loader2 size={18} className={styles.spinner} />
-                ) : (
-                  <Check size={18} />
-                )}
-                Testar Conexão
+              <button className={`${styles.actionButton} ${styles.testButton}`} onClick={handleTestConnection} disabled={!!actionLoading}>
+                {actionLoading === 'test' ? <Loader2 size={18} className={styles.spinner} /> : <Check size={18} />}
+                Testar Conexao
               </button>
 
-              <button
-                className={`${styles.actionButton} ${styles.disconnectButton}`}
-                onClick={handleDisconnect}
-                disabled={!!actionLoading}
-              >
-                {actionLoading === 'disconnect' ? (
-                  <Loader2 size={18} className={styles.spinner} />
-                ) : (
-                  <Unplug size={18} />
-                )}
+              <button className={`${styles.actionButton} ${styles.disconnectButton}`} onClick={handleDisconnect} disabled={!!actionLoading}>
+                {actionLoading === 'disconnect' ? <Loader2 size={18} className={styles.spinner} /> : <Unplug size={18} />}
                 Desconectar
               </button>
             </>
           )}
 
-          {/* Delete button - shown for all states except loading/no-instance */}
-          {(state === 'connected' || state === 'disconnected' || state === 'connecting' || state === 'error') && (
-            <button
-              className={`${styles.actionButton} ${styles.deleteButton}`}
-              onClick={handleDelete}
-              disabled={!!actionLoading}
-            >
-              {actionLoading === 'delete' ? (
-                <Loader2 size={18} className={styles.spinner} />
-              ) : (
-                <Trash2 size={16} />
-              )}
-              Excluir integração
+          {!blockedReason && (state === 'connected' || state === 'disconnected' || state === 'connecting' || state === 'error') && (
+            <button className={`${styles.actionButton} ${styles.deleteButton}`} onClick={handleDelete} disabled={!!actionLoading}>
+              {actionLoading === 'delete' ? <Loader2 size={18} className={styles.spinner} /> : <Trash2 size={16} />}
+              Excluir integracao
             </button>
           )}
         </div>
@@ -477,11 +591,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {state !== 'loading' && state !== 'no-instance' && (
-              <button 
-                className={`${styles.refreshButton} ${isRefreshing ? styles.spinning : ''}`}
-                onClick={handleRefresh}
-                title="Atualizar"
-              >
+              <button className={`${styles.refreshButton} ${isRefreshing ? styles.spinning : ''}`} onClick={handleRefresh} title="Atualizar">
                 <RefreshCw size={18} />
               </button>
             )}
@@ -492,6 +602,17 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         </div>
 
         <div className={styles.content}>
+          {pendingCommand && (
+            <div className={styles.pendingBanner}>
+              <Clock3 size={18} />
+              <div>
+                <strong>Processando comando pendente</strong>
+                <p>{pendingCommand.message}</p>
+                <code>command_id: {pendingCommand.command_id}</code>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className={styles.error}>
               <AlertCircle size={18} />
