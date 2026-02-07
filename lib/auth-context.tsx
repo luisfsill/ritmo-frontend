@@ -11,12 +11,23 @@ interface User {
     business_name?: string;
 }
 
+interface MeResponse {
+    user_id: string;
+    tenant_id: string;
+    role: string;
+    email: string;
+    full_name: string | null;
+    tenant_slug: string;
+    business_name: string;
+}
+
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isLoggedIn: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
     error: string | null;
 }
 
@@ -48,7 +59,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Extrair dados do usuário a partir do token
+    // Buscar dados completos do usuário do endpoint /me
+    const fetchUserFromApi = async (): Promise<User | null> => {
+        try {
+            const response = await api.get<MeResponse>('/api/v1/me');
+            return {
+                id: response.user_id,
+                email: response.email,
+                name: response.full_name || response.email.split('@')[0],
+                tenant_id: response.tenant_id,
+                business_name: response.business_name,
+            };
+        } catch {
+            return null;
+        }
+    };
+
+    // Extrair dados do usuário a partir do token (fallback)
     const getUserFromToken = (): User | null => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('ritmo_access_token') : null;
         if (!token) return null;
@@ -70,8 +97,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Check for existing auth on mount
     useEffect(() => {
-        const checkAuth = () => {
+        const checkAuth = async () => {
             if (isAuthenticated()) {
+                // Primeiro tenta buscar dados da API
+                const apiUser = await fetchUserFromApi();
+                if (apiUser) {
+                    setUser(apiUser);
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Fallback: extrair do token
                 const userData = getUserFromToken();
                 if (userData) {
                     setUser(userData);
@@ -110,13 +146,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const tokens = await api.post<TokenPair>('/api/v1/auth/login', { email, password }, { requiresAuth: false });
             setTokens(tokens);
             
-            // Extrair dados do usuário do token
-            const userData = getUserFromToken();
-            if (userData) {
-                setUser(userData);
+            // Buscar dados completos do usuário da API
+            const apiUser = await fetchUserFromApi();
+            if (apiUser) {
+                setUser(apiUser);
             } else {
-                // Fallback: usar dados básicos do email
-                setUser({ id: '', email, name: email.split('@')[0], tenant_id: '' });
+                // Fallback: extrair dados do token
+                const userData = getUserFromToken();
+                if (userData) {
+                    setUser(userData);
+                } else {
+                    // Último fallback: usar dados básicos do email
+                    setUser({ id: '', email, name: email.split('@')[0], tenant_id: '' });
+                }
             }
         } catch (err) {
             const apiError = err as ApiError;
@@ -144,6 +186,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setError(null);
     };
 
+    const refreshUser = async () => {
+        const apiUser = await fetchUserFromApi();
+        if (apiUser) {
+            setUser(apiUser);
+        }
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -152,6 +201,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isLoggedIn: !!user,
                 login,
                 logout,
+                refreshUser,
                 error,
             }}
         >

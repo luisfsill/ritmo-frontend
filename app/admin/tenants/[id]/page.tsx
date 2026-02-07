@@ -17,6 +17,7 @@ import {
   MapPin,
   Globe,
   FileText,
+  Bot,
 } from 'lucide-react';
 import Link from 'next/link';
 import styles from './edit.module.css';
@@ -177,6 +178,13 @@ export default function EditTenantPage({ params }: { params: Promise<{ id: strin
               <span className={styles.infoLabel}>Criado em</span>
             </div>
           </div>
+          <Link href={`/admin/tenants/${id}/ai`} className={styles.infoCardLink}>
+            <Bot size={24} />
+            <div>
+              <span className={styles.infoValue}>Configurar</span>
+              <span className={styles.infoLabel}>Agente IA</span>
+            </div>
+          </Link>
         </div>
 
         {/* Form Sections */}

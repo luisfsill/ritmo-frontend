@@ -36,6 +36,14 @@ function humanizeUazapiError(message: string): string {
   if (message.includes('uazapi_webhook_secret_missing')) {
     return 'Integração temporariamente indisponível: configuração de webhook pendente no backend.';
   }
+  if (
+    message.includes('429') ||
+    message.includes('max_instances') ||
+    message.toLowerCase().includes('maximum') ||
+    message.toLowerCase().includes('limit')
+  ) {
+    return 'Limite de instâncias atingido no servidor WhatsApp. Contate o suporte para liberar mais instâncias.';
+  }
   return message;
 }
 

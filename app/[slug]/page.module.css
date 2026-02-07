@@ -1,0 +1,690 @@
+/* Public Booking Page Styles */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.slug {
+  color: var(--foreground);
+  font-size: var(--font-size-lg);
+}
+
+.themeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.themeToggle:hover {
+  background: var(--muted);
+}
+
+/* Container */
+.container {
+  flex: 1;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: var(--space-4);
+  color: var(--muted-foreground);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Not Found */
+.notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  gap: var(--space-4);
+  color: var(--muted-foreground);
+}
+
+.notFound h1 {
+  font-size: var(--font-size-2xl);
+  color: var(--foreground);
+  margin: 0;
+}
+
+.notFound p {
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.homeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.homeLink:hover {
+  opacity: 0.9;
+}
+
+/* Progress Indicator */
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-8);
+  gap: var(--space-2);
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.progressNumber {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  transition: all 0.3s ease;
+}
+
+.progressStep.active .progressNumber {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.progressStep.completed .progressNumber {
+  background: var(--success);
+  color: white;
+}
+
+.progressLabel {
+  font-size: var(--font-size-xs);
+  color: var(--muted-foreground);
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .progressLabel {
+    display: block;
+  }
+}
+
+.progressLine {
+  width: 40px;
+  height: 2px;
+  background: var(--border);
+  margin-bottom: 20px;
+}
+
+@media (min-width: 480px) {
+  .progressLine {
+    width: 60px;
+  }
+}
+
+/* Error Banner */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--destructive);
+  color: white;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.errorClose {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: white;
+  font-size: var(--font-size-xl);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Back Button */
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  margin-bottom: var(--space-4);
+  transition: color 0.2s ease;
+}
+
+.backButton:hover {
+  color: var(--foreground);
+}
+
+/* Step Content */
+.stepContent {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0 0 var(--space-2) 0;
+  color: var(--foreground);
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--muted-foreground);
+  margin: 0 0 var(--space-6) 0;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--muted-foreground);
+  gap: var(--space-4);
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: var(--font-size-sm);
+}
+
+/* Services List */
+.servicesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.serviceCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.serviceCard:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.serviceInfo {
+  flex: 1;
+}
+
+.serviceName {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--space-2) 0;
+  color: var(--foreground);
+}
+
+.serviceMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--muted-foreground);
+}
+
+.serviceDuration {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.servicePrice {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.serviceArrow {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+/* Calendar */
+.calendar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--muted);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--foreground);
+  transition: all 0.2s ease;
+}
+
+.calendarNav:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.calendarNav:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calendarMonth {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.calendarWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.weekday {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--muted-foreground);
+  padding: var(--space-2);
+}
+
+.calendarDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+}
+
+.calendarDay {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--foreground);
+}
+
+.calendarDay:hover:not(:disabled):not(.empty) {
+  background: var(--muted);
+}
+
+.calendarDay.empty {
+  cursor: default;
+}
+
+.calendarDay.past {
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calendarDay.today {
+  border: 2px solid var(--primary);
+}
+
+.calendarDay.selected {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Time Slots */
+.slotsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .slotsGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.slotButton {
+  padding: var(--space-3) var(--space-2);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--foreground);
+}
+
+.slotButton:hover {
+  border-color: var(--primary);
+}
+
+.slotButton.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Booking Summary */
+.bookingSummary {
+  background: var(--muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--foreground);
+}
+
+.summaryRow + .summaryRow {
+  margin-top: var(--space-2);
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.input {
+  padding: var(--space-3) var(--space-4);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  color: var(--foreground);
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: var(--space-4);
+}
+
+.submitButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Confirmation */
+.confirmation {
+  text-align: center;
+  padding: var(--space-6) 0;
+}
+
+.confirmationIcon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--success);
+  color: white;
+  border-radius: 50%;
+  margin: 0 auto var(--space-6);
+  animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.confirmationTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0 0 var(--space-3) 0;
+  color: var(--foreground);
+}
+
+.confirmationText {
+  font-size: var(--font-size-base);
+  color: var(--muted-foreground);
+  margin: 0 0 var(--space-6) 0;
+  line-height: 1.6;
+}
+
+.confirmationDetails {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  text-align: left;
+  margin-bottom: var(--space-6);
+}
+
+.confirmationRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+}
+
+.confirmationRow + .confirmationRow {
+  border-top: 1px solid var(--border);
+}
+
+.confirmationLabel {
+  color: var(--muted-foreground);
+}
+
+.confirmationValue {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.newBookingButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-6);
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.newBookingButton:hover {
+  background: var(--border);
+}
+
+/* Footer */
+.footer {
+  padding: var(--space-4) var(--space-6);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--muted-foreground);
+  border-top: 1px solid var(--border);
+}
+
+.footerLink {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 480px) {
+  .container {
+    padding: var(--space-4);
+  }
+
+  .title {
+    font-size: var(--font-size-xl);
+  }
+
+  .slotsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

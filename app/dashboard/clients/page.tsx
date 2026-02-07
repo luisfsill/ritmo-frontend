@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Mail, Phone, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Plus, Trash2, Mail, Phone, Loader2, Edit2 } from 'lucide-react';
+import { Button, Input, SearchInput, Modal, ModalFooter } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './clients.module.css';
+
+interface ClientFormData {
+    full_name: string;
+    phone: string;
+    email: string;
+}
 
 interface Client {
     id: string;
@@ -21,6 +27,14 @@ export default function ClientsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [editingClient, setEditingClient] = useState<Client | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [formData, setFormData] = useState<ClientFormData>({
+        full_name: '',
+        phone: '',
+        email: '',
+    });
 
     useEffect(() => {
         loadClients();
@@ -69,6 +83,67 @@ export default function ClientsPage() {
         (client.whatsapp_handle ?? '').includes(searchQuery)
     );
 
+    const resetForm = () => {
+        setFormData({
+            full_name: '',
+            phone: '',
+            email: '',
+        });
+    };
+
+    const openCreateModal = () => {
+        setEditingClient(null);
+        resetForm();
+        setShowModal(true);
+    };
+
+    const openEditModal = (client: Client) => {
+        setEditingClient(client);
+        setFormData({
+            full_name: client.full_name,
+            phone: client.phone || '',
+            email: client.email || '',
+        });
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setEditingClient(null);
+        resetForm();
+    };
+
+    const handleSave = async () => {
+        if (!formData.full_name.trim()) {
+            alert('O nome do cliente é obrigatório');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const payload = {
+                full_name: formData.full_name.trim(),
+                phone: formData.phone.trim() || null,
+                email: formData.email.trim() || null,
+            };
+
+            if (editingClient) {
+                const updated = await api.patch<Client>(`/api/v1/clients/${editingClient.id}`, payload);
+                setClients(clients.map(c => c.id === editingClient.id ? updated : c));
+            } else {
+                const created = await api.post<Client>('/api/v1/clients', payload);
+                setClients([...clients, created]);
+            }
+
+            closeModal();
+        } catch (err) {
+            const apiError = err as ApiError;
+            alert(apiError.message || 'Erro ao salvar cliente. Tente novamente.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className={styles.page}>
             <div className={styles.header}>
@@ -76,22 +151,17 @@ export default function ClientsPage() {
                     <h1 className={styles.title}>Clientes</h1>
                     <p className={styles.subtitle}>Gerencie seus clientes e histórico</p>
                 </div>
-                <Button leftIcon={<Plus size={18} />}>
+                <Button leftIcon={<Plus size={18} />} onClick={openCreateModal}>
                     Novo Cliente
                 </Button>
             </div>
 
             <div className={styles.toolbar}>
-                <div className={styles.searchWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome, telefone ou email..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={styles.searchInput}
-                    />
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Buscar por nome, telefone ou email..."
+                />
                 <div className={styles.count}>
                     {filteredClients.length} cliente{filteredClients.length !== 1 ? 's' : ''}
                 </div>
@@ -148,6 +218,7 @@ export default function ClientsPage() {
                                     </td>
                                     <td>
                                         <div className={styles.actions}>
+                                            <button className={styles.actionButton} onClick={() => openEditModal(client)} title="Editar"><Edit2 size={16} /></button>
                                             <button className={`${styles.actionButton} ${styles.danger}`} onClick={() => handleDelete(client.id)} title="Excluir"><Trash2 size={16} /></button>
                                         </div>
                                     </td>
@@ -157,6 +228,61 @@ export default function ClientsPage() {
                     </table>
                 </div>
             )}
+
+            {/* Modal de Criar/Editar Cliente */}
+            <Modal
+                isOpen={showModal}
+                onClose={closeModal}
+                title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
+                size="sm"
+            >
+                <div className={styles.form}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Nome completo *</label>
+                        <Input
+                            value={formData.full_name}
+                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                            placeholder="Nome do cliente"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Telefone / WhatsApp</label>
+                        <Input
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="(11) 99999-9999"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>E-mail</label>
+                        <Input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="email@exemplo.com"
+                        />
+                    </div>
+                </div>
+
+                <ModalFooter>
+                    <Button variant="secondary" onClick={closeModal} disabled={saving}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                            <>
+                                <Loader2 size={16} className={styles.spinner} />
+                                Salvando...
+                            </>
+                        ) : (
+                            editingClient ? 'Salvar' : 'Criar Cliente'
+                        )}
+                    </Button>
+                </ModalFooter>
+            </Modal>
         </div>
     );
 }

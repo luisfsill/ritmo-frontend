@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, MoreVertical, Edit2, Trash2, Eye, Shield, Users, Plus } from 'lucide-react';
+import { MoreVertical, Edit2, Trash2, Eye, Shield, Users, Plus } from 'lucide-react';
+import { SearchInput } from '@/components/ui';
 import styles from './users.module.css';
 
 interface User {
@@ -130,15 +131,11 @@ export default function UsersPage() {
 
       {/* Search */}
       <div className={styles.toolbar}>
-        <div className={styles.searchBox}>
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Buscar por nome, email ou empresa..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Buscar por nome, email ou empresa..."
+        />
         <div className={styles.filterInfo}>
           {filteredUsers.length} usuário{filteredUsers.length !== 1 ? 's' : ''}
         </div>

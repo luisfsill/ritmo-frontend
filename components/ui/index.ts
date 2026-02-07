@@ -5,3 +5,4 @@ export { LoadingSpinner, LoadingOverlay, Skeleton } from './Loading';
 export { ThemeToggle } from './ThemeToggle';
 export { Modal, ModalFooter } from './Modal';
 export { WhatsAppModal } from './WhatsAppModal';
+export { SearchInput } from './SearchInput';
