@@ -26,7 +26,7 @@ Guia completo para integração com WhatsApp via UAZAPI na plataforma Ritmo.
    ↓
 6. ✅ WhatsApp conectado + Webhook ativo
    ↓
-7. Mensagens chegam via webhook /api/webhooks/uazapi/{slug}
+7. Mensagens chegam via webhook /api/webhooks/uazapi/{slug}?connection={token_por_tenant}
 ```
 
 **✨ NOVIDADE (v2.0):** Todo o fluxo após escanear o QR code é **100% automatizado** - não requer intervenção manual.
@@ -43,7 +43,6 @@ NEXT_PUBLIC_RITMO_API_URL=https://api.ritmo.com
 
 # BACKEND ONLY (no .env do backend)
 UAZAPI_ADMIN_TOKEN=seu-token-secreto-aqui
-UAZAPI_WEBHOOK_SECRET=seu-segredo-de-webhook  # ⚠️ OBRIGATÓRIO para automação
 UAZAPI_BASE_URL=https://free.uazapi.com        # Opcional (padrão: http://127.0.0.1:8090)
 
 # BACKEND ONLY
@@ -54,20 +53,18 @@ UAZAPI_BASE_URL=https://free.uazapi.com        # Opcional (padrão: http://127.0
 
 Para que o fluxo seja 100% automático, certifique-se de:
 
-1. ✅ `UAZAPI_WEBHOOK_SECRET` configurado no backend
-2. ✅ `BASE_URL` acessível publicamente (não pode ser localhost)
-3. ✅ Backend exposto na internet (use ngrok em dev: `make localdev-ngrok`)
+1. ✅ `BASE_URL` acessível publicamente (não pode ser localhost)
+2. ✅ Backend exposto na internet (use ngrok em dev: `make localdev-ngrok`)
+3. ✅ Webhook registrado pelo backend com `?connection=<token_por_tenant>`
 
 ### Em Produção
 
 ```env
 # Staging (backend)
 UAZAPI_ADMIN_TOKEN=staging-token
-UAZAPI_WEBHOOK_SECRET=staging-secret
 
 # Production (backend)
 UAZAPI_ADMIN_TOKEN=production-token
-UAZAPI_WEBHOOK_SECRET=production-secret
 ```
 
 ---
@@ -521,7 +518,7 @@ WhatsAppStorage.clearToken();
 
 - [ ] `NEXT_PUBLIC_RITMO_API_URL` configurada
 - [ ] `UAZAPI_ADMIN_TOKEN` setada no backend
-- [ ] `UAZAPI_WEBHOOK_SECRET` setada no backend
+- [ ] Webhook UAZAPI registrado com `connection` por tenant
 - [ ] Backend endpoint `/api/v1/uazapi/*` disponível
 - [ ] Webhook endpoint implementado
 - [ ] WhatsAppModal renderizando

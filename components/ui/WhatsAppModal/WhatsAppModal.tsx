@@ -30,8 +30,12 @@ function normalizeError(err: unknown): string {
 }
 
 function humanizeUazapiError(message: string): string {
-  if (message.includes('uazapi_webhook_secret_missing') || message.includes('missing_webhook_secret')) {
-    return 'A integração do WhatsApp está bloqueada até a configuração do recebimento de mensagens ser concluída.';
+  if (
+    message.includes('missing webhook connection') ||
+    message.includes('invalid webhook connection') ||
+    message.includes('uazapi_connection_not_configured')
+  ) {
+    return 'A autenticação do webhook está inválida. Registre o webhook novamente para gerar uma nova conexão.';
   }
   if (message.includes('uazapi_token_missing')) {
     return 'Nenhuma instância ativa foi encontrada para este número. Crie uma nova instância para continuar.';
@@ -76,8 +80,6 @@ function userFacingActionForBlocker(blocker: string): string | null {
     case 'missing_webhook_url':
     case 'webhook_url_localhost':
       return 'Clique em "Registrar Webhook" para concluir a configuração de recebimento de mensagens.';
-    case 'missing_webhook_secret_prod':
-      return 'Peça ao suporte para concluir a configuração de segurança da integração.';
     case 'agent_worker_disabled':
       return 'As respostas automáticas estão desativadas no momento.';
     default:

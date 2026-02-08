@@ -35,7 +35,7 @@ const configureWebhook = async (): Promise<boolean> => {
 - Mensagens claras sobre o que está acontecendo
 - Erros humanizados com mensagens específicas:
   - "Webhook não configurado: ..." (se falhar após 3 tentativas)
-  - "Integração temporariamente indisponível" (se `missing_webhook_secret`)
+- "Integração temporariamente indisponível" (se webhook sem `connection`)
   - "Limite de instâncias atingido" (erro 429)
 
 ### 4. ✅ **Logging e Observabilidade**
@@ -91,7 +91,7 @@ const configureWebhook = async (): Promise<boolean> => {
 │    Estado: "configuring-webhook"                            │
 │    POST /api/v1/uazapi/webhook                              │
 │    ├─ events: ['messages', 'connection', 'messages_update']│
-│    ├─ url: {BASE_URL}/webhooks/uazapi/{tenant_slug}        │
+│    ├─ url: {BASE_URL}/webhooks/uazapi/{tenant_slug}?connection={TOKEN} │
 │    └─ excludeMessages: ['wasSentByApi']                     │
 └────────────────────┬────────────────────────────────────────┘
                      │
@@ -111,9 +111,6 @@ const configureWebhook = async (): Promise<boolean> => {
 ### Backend (.env)
 
 ```bash
-# ⚠️ OBRIGATÓRIO para automação funcionar
-UAZAPI_WEBHOOK_SECRET=seu-segredo-webhook-aqui
-
 # ⚠️ Necessário para gerar URL do webhook
 BASE_URL=https://seu-dominio.com
 
@@ -144,7 +141,7 @@ O Makefile configurará automaticamente `BASE_URL` com a URL do ngrok.
 
 ### ❌ "Webhook não configurado"
 
-**Causa:** `UAZAPI_WEBHOOK_SECRET` ausente ou `BASE_URL` não acessível
+**Causa:** webhook não registrado com `connection` válido ou `BASE_URL` não acessível
 
 **Solução:**
 1. Verifique `.env` do backend
@@ -158,7 +155,7 @@ O Makefile configurará automaticamente `BASE_URL` com a URL do ngrok.
 **Solução:**
 ```bash
 # Teste acesso externo ao webhook
-curl https://seu-dominio.com/api/v1/webhooks/uazapi/seu-tenant
+curl "https://seu-dominio.com/api/v1/webhooks/uazapi/seu-tenant?connection=TOKEN"
 
 # Deve retornar 404 ou erro de método (POST esperado)
 # Se timeout ou connection refused = problema de rede
@@ -186,9 +183,9 @@ curl https://seu-dominio.com/api/v1/webhooks/uazapi/seu-tenant
 
 // Falha
 🔧 Configurando webhook automaticamente (tentativa 1/3)...
-❌ Erro ao configurar webhook (tentativa 1): missing_webhook_secret
+❌ Erro ao configurar webhook (tentativa 1): missing webhook connection
 🔧 Configurando webhook automaticamente (tentativa 2/3)...
-❌ Erro ao configurar webhook (tentativa 2): missing_webhook_secret
+❌ Erro ao configurar webhook (tentativa 2): invalid webhook connection
 ⚠️ WhatsApp conectado mas webhook não foi configurado automaticamente
 ```
 
@@ -202,7 +199,7 @@ curl https://seu-dominio.com/api/v1/webhooks/uazapi/seu-tenant
 
 ## 🔐 Segurança
 
-- ✅ `UAZAPI_WEBHOOK_SECRET` validado em `/webhooks/uazapi/{slug}`
+- ✅ `connection` por tenant validado em `/webhooks/uazapi/{slug}`
 - ✅ Tenant isolado via RLS (Row Level Security)
 - ✅ JWT necessário para todas chamadas ao backend
 - ✅ Token da instância NUNCA exposto ao frontend (armazenado em `tenant.settings`)
@@ -228,7 +225,7 @@ curl https://seu-dominio.com/api/v1/webhooks/uazapi/seu-tenant
 - [x] Erros humanizados
 - [x] Logging detalhado
 - [x] Documentação atualizada
-- [x] Tratamento de casos extremos (429, missing_webhook_secret)
+- [x] Tratamento de casos extremos (429, webhook connection inválida)
 - [x] Testes em desenvolvimento local (ngrok)
 - [ ] Testes em staging
 - [ ] Testes em production

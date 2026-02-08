@@ -89,7 +89,6 @@ export interface UazapiIntegrationStatus {
     | 'missing_webhook_url'
     | 'webhook_not_registered'
     | 'webhook_url_localhost'
-    | 'missing_webhook_secret_prod'
     | 'agent_worker_disabled'
     | string
   )[];
@@ -100,7 +99,6 @@ export interface UazapiIntegrationStatus {
   instance_connected: boolean;
   webhook_registered: boolean;
   whatsapp_webhook_url: string | null;
-  webhook_secret_configured: boolean;
   agent_worker_enabled: boolean;
   ready_for_inbound: boolean;
   ready_for_agent_pipeline: boolean;
@@ -146,7 +144,7 @@ export interface UazapiAdoptTokenData {
 
 export interface UazapiCapabilitiesData {
   enabled: boolean;
-  reason?: 'missing_webhook_secret' | 'ok' | string;
+  reason?: 'ok' | string;
 }
 
 interface UazapiRequestOptions {

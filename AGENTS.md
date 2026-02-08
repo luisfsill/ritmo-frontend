@@ -190,7 +190,7 @@ const debouncedSearch = debounce(async (query) => {
 If frontend displays webhook data:
 - **Assume webhooks are untrusted** until backend validates signature
 - **Never process unverified webhooks** in UI
-- Backend validates with `UAZAPI_WEBHOOK_SECRET` or WhatsApp API signature
+- Backend validates Uazapi webhooks with tenant `connection` token (query param) or WhatsApp API signature
 
 #### Message Content
 ```javascript

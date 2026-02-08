@@ -125,9 +125,6 @@ export default function SettingsPage() {
                         if (capabilities.reason === 'canary_disabled') {
                             setWhatsappStatus('rollout');
                             setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
-                        } else if (capabilities.reason === 'missing_webhook_secret') {
-                            setWhatsappStatus('config_required');
-                            setWhatsappStatusHint('A integração do WhatsApp está bloqueada até a configuração do recebimento de mensagens ser concluída.');
                         } else {
                             setWhatsappStatus('error');
                             setWhatsappStatusHint('Integração temporariamente indisponível.');
@@ -159,9 +156,13 @@ export default function SettingsPage() {
                     if (message.includes('uazapi_token_missing')) {
                         setWhatsappStatus('disconnected');
                         setWhatsappStatusHint(null);
-                    } else if (message.includes('uazapi_webhook_secret_missing')) {
+                    } else if (
+                        message.includes('missing webhook connection') ||
+                        message.includes('invalid webhook connection') ||
+                        message.includes('uazapi_connection_not_configured')
+                    ) {
                         setWhatsappStatus('config_required');
-                        setWhatsappStatusHint('A integração do WhatsApp está bloqueada até a configuração do recebimento de mensagens ser concluída.');
+                        setWhatsappStatusHint('A autenticação do webhook está inválida. Registre o webhook novamente.');
                     } else {
                         setWhatsappStatus('error');
                         setWhatsappStatusHint(null);

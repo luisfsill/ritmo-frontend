@@ -306,7 +306,7 @@ Modal shows "Conectado ✓"
 ### UAZAPI (WhatsApp)
 - **Integração no dashboard**: via backend Ritmo (`/api/v1/uazapi/*`)
 - **Admin Token**: `UAZAPI_ADMIN_TOKEN` (env, apenas backend)
-- **Webhook Secret**: `UAZAPI_WEBHOOK_SECRET` (env backend, obrigatório)
+- **Webhook Auth**: token `connection` por tenant na URL de webhook
 - **Endpoints principais**:
   - `POST /api/v1/uazapi/instance/init` (criar instância)
   - `POST /api/v1/uazapi/instance/connect` (gerar QR)
