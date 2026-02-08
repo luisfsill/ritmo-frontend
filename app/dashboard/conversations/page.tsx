@@ -92,10 +92,15 @@ export default function ConversationsPage() {
     const [selectedConversation, setSelectedConversation] = useState<ConversationListItem | null>(null);
     const [resumingId, setResumingId] = useState<string | null>(null);
 
-    const canResume = useMemo(
-        () => user?.role === 'owner' || user?.role === 'admin',
-        [user?.role],
-    );
+    const canResume = useMemo(() => {
+        const normalizedRole = String(user?.role || '').trim().toLowerCase();
+        if (!normalizedRole) {
+            // Fallback defensivo: alguns tokens/sessões antigas podem não expor role no front.
+            // O backend continua protegendo via RBAC.
+            return true;
+        }
+        return normalizedRole === 'owner' || normalizedRole === 'admin';
+    }, [user?.role]);
 
     const loadConversations = useCallback(
         async (reset: boolean) => {
