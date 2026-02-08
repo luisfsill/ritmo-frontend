@@ -6,10 +6,22 @@ import { Button, Input, Modal, ModalFooter, SearchInput, useConfirmDialog, useTo
 import { api, ApiError } from '@/lib/api';
 import styles from './clients.module.css';
 
+interface ClientAddress {
+    street?: string | null;
+    number?: string | null;
+    complement?: string | null;
+    neighborhood?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country_code?: string | null;
+}
+
 interface ClientFormData {
     full_name: string;
     phone: string;
     email: string;
+    address: ClientAddress;
 }
 
 interface Client {
@@ -20,6 +32,7 @@ interface Client {
     tags: string[] | null;
     email: string | null;
     phone: string | null;
+    address: ClientAddress | null;
 }
 
 interface ClientQueryResponse {
@@ -29,6 +42,46 @@ interface ClientQueryResponse {
 }
 
 const PAGE_SIZE = 30;
+
+const emptyAddress = (): ClientAddress => ({
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country_code: '',
+});
+
+const normalizeAddressForApi = (address: ClientAddress): ClientAddress | null => {
+    const normalized: ClientAddress = {
+        street: address.street?.trim() || null,
+        number: address.number?.trim() || null,
+        complement: address.complement?.trim() || null,
+        neighborhood: address.neighborhood?.trim() || null,
+        city: address.city?.trim() || null,
+        state: address.state?.trim() || null,
+        postal_code: address.postal_code?.trim() || null,
+        country_code: address.country_code?.trim().toUpperCase() || null,
+    };
+    const hasAnyValue = Object.values(normalized).some((value) => Boolean(value));
+    return hasAnyValue ? normalized : null;
+};
+
+const validateAddress = (address: ClientAddress | null): string | null => {
+    if (!address) return null;
+    const countryCode = address.country_code || '';
+    if (countryCode && countryCode.length !== 2) {
+        return 'País deve ter 2 letras (ex: BR).';
+    }
+    const postalCode = address.postal_code || '';
+    const postalDigits = postalCode.replace(/\D/g, '');
+    if (postalCode && postalDigits.length > 0 && postalDigits.length < 5) {
+        return 'CEP parece inválido.';
+    }
+    return null;
+};
 
 export default function ClientsPage() {
     const { showToast } = useToast();
@@ -48,6 +101,7 @@ export default function ClientsPage() {
         full_name: '',
         phone: '',
         email: '',
+        address: emptyAddress(),
     });
 
     useEffect(() => {
@@ -120,6 +174,7 @@ export default function ClientsPage() {
             full_name: '',
             phone: '',
             email: '',
+            address: emptyAddress(),
         });
     };
 
@@ -135,6 +190,16 @@ export default function ClientsPage() {
             full_name: client.full_name,
             phone: client.phone || '',
             email: client.email || '',
+            address: {
+                street: client.address?.street || '',
+                number: client.address?.number || '',
+                complement: client.address?.complement || '',
+                neighborhood: client.address?.neighborhood || '',
+                city: client.address?.city || '',
+                state: client.address?.state || '',
+                postal_code: client.address?.postal_code || '',
+                country_code: client.address?.country_code || '',
+            },
         });
         setShowModal(true);
     };
@@ -153,10 +218,17 @@ export default function ClientsPage() {
 
         setSaving(true);
         try {
+            const normalizedAddress = normalizeAddressForApi(formData.address);
+            const addressError = validateAddress(normalizedAddress);
+            if (addressError) {
+                showToast(addressError, 'error');
+                return;
+            }
             const payload = {
                 full_name: formData.full_name.trim(),
                 phone: formData.phone.trim() || null,
                 email: formData.email.trim() || null,
+                address: normalizedAddress,
             };
 
             if (editingClient) {
@@ -352,7 +424,7 @@ export default function ClientsPage() {
                 </>
             )}
 
-            <Modal isOpen={showModal} onClose={closeModal} title={editingClient ? 'Editar Cliente' : 'Novo Cliente'} size="sm">
+            <Modal isOpen={showModal} onClose={closeModal} title={editingClient ? 'Editar Cliente' : 'Novo Cliente'} size="md">
                 <div className={styles.form}>
                     <div className={styles.formGroup}>
                         <label className={styles.formLabel}>Nome completo *</label>
@@ -380,6 +452,122 @@ export default function ClientsPage() {
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             placeholder="email@exemplo.com"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Endereço (opcional)</label>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Logradouro</label>
+                        <Input
+                            value={formData.address.street || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, street: e.target.value },
+                                })
+                            }
+                            placeholder="Rua, avenida, etc."
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Número</label>
+                        <Input
+                            value={formData.address.number || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, number: e.target.value },
+                                })
+                            }
+                            placeholder="123"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Complemento</label>
+                        <Input
+                            value={formData.address.complement || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, complement: e.target.value },
+                                })
+                            }
+                            placeholder="Apto, sala, bloco"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Bairro</label>
+                        <Input
+                            value={formData.address.neighborhood || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, neighborhood: e.target.value },
+                                })
+                            }
+                            placeholder="Bairro"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Cidade</label>
+                        <Input
+                            value={formData.address.city || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, city: e.target.value },
+                                })
+                            }
+                            placeholder="Cidade"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Estado</label>
+                        <Input
+                            value={formData.address.state || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, state: e.target.value },
+                                })
+                            }
+                            placeholder="SP"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>CEP</label>
+                        <Input
+                            value={formData.address.postal_code || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, postal_code: e.target.value },
+                                })
+                            }
+                            placeholder="00000-000"
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>País</label>
+                        <Input
+                            value={formData.address.country_code || ''}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    address: { ...formData.address, country_code: e.target.value.toUpperCase() },
+                                })
+                            }
+                            placeholder="BR"
                         />
                     </div>
                 </div>

@@ -9,10 +9,22 @@ import { api, ApiError } from '@/lib/api';
 import { getCatalog, type CatalogService, type CatalogStaff } from '@/lib/catalog';
 import styles from './new.module.css';
 
+interface ClientAddress {
+    street?: string | null;
+    number?: string | null;
+    complement?: string | null;
+    neighborhood?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country_code?: string | null;
+}
+
 interface Client {
     id: string;
     full_name: string;
     phone: string | null;
+    address?: ClientAddress | null;
 }
 
 interface AvailableSlot {
@@ -26,6 +38,46 @@ interface AvailabilityResponse {
     date: string;
     slots: AvailableSlot[];
 }
+
+const emptyAddress = (): ClientAddress => ({
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country_code: '',
+});
+
+const normalizeAddressForApi = (address: ClientAddress): ClientAddress | null => {
+    const normalized: ClientAddress = {
+        street: address.street?.trim() || null,
+        number: address.number?.trim() || null,
+        complement: address.complement?.trim() || null,
+        neighborhood: address.neighborhood?.trim() || null,
+        city: address.city?.trim() || null,
+        state: address.state?.trim() || null,
+        postal_code: address.postal_code?.trim() || null,
+        country_code: address.country_code?.trim().toUpperCase() || null,
+    };
+    const hasAnyValue = Object.values(normalized).some((value) => Boolean(value));
+    return hasAnyValue ? normalized : null;
+};
+
+const validateAddress = (address: ClientAddress | null): string | null => {
+    if (!address) return null;
+    const countryCode = address.country_code || '';
+    if (countryCode && countryCode.length !== 2) {
+        return 'País deve ter 2 letras (ex: BR).';
+    }
+    const postalCode = address.postal_code || '';
+    const postalDigits = postalCode.replace(/\D/g, '');
+    if (postalCode && postalDigits.length > 0 && postalDigits.length < 5) {
+        return 'CEP parece inválido.';
+    }
+    return null;
+};
 
 export default function NewAppointmentPage() {
     const router = useRouter();
@@ -51,6 +103,7 @@ export default function NewAppointmentPage() {
     const [isNewClient, setIsNewClient] = useState(false);
     const [newClientName, setNewClientName] = useState('');
     const [newClientPhone, setNewClientPhone] = useState('');
+    const [newClientAddress, setNewClientAddress] = useState<ClientAddress>(emptyAddress());
 
     // Load initial data
     useEffect(() => {
@@ -117,9 +170,17 @@ export default function NewAppointmentPage() {
 
             // Create new client if needed
             if (isNewClient && newClientName && newClientPhone) {
+                const normalizedAddress = normalizeAddressForApi(newClientAddress);
+                const addressError = validateAddress(normalizedAddress);
+                if (addressError) {
+                    showToast(addressError, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
                 const newClient = await api.post<Client>('/api/v1/clients', {
-                    full_name: newClientName,
-                    phone: newClientPhone
+                    full_name: newClientName.trim(),
+                    phone: newClientPhone.trim(),
+                    address: normalizedAddress,
                 });
                 clientId = newClient.id;
             }
@@ -393,6 +454,73 @@ export default function NewAppointmentPage() {
                                     onChange={(e) => setNewClientPhone(e.target.value)}
                                     placeholder="(00) 00000-0000"
                                 />
+                                <Input
+                                    label="Logradouro"
+                                    value={newClientAddress.street || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, street: e.target.value }))
+                                    }
+                                    placeholder="Rua, avenida, etc."
+                                />
+                                <Input
+                                    label="Número"
+                                    value={newClientAddress.number || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, number: e.target.value }))
+                                    }
+                                    placeholder="123"
+                                />
+                                <Input
+                                    label="Complemento"
+                                    value={newClientAddress.complement || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, complement: e.target.value }))
+                                    }
+                                    placeholder="Apto, sala, bloco"
+                                />
+                                <Input
+                                    label="Bairro"
+                                    value={newClientAddress.neighborhood || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, neighborhood: e.target.value }))
+                                    }
+                                    placeholder="Bairro"
+                                />
+                                <Input
+                                    label="Cidade"
+                                    value={newClientAddress.city || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, city: e.target.value }))
+                                    }
+                                    placeholder="Cidade"
+                                />
+                                <Input
+                                    label="Estado"
+                                    value={newClientAddress.state || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, state: e.target.value }))
+                                    }
+                                    placeholder="SP"
+                                />
+                                <Input
+                                    label="CEP"
+                                    value={newClientAddress.postal_code || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({ ...prev, postal_code: e.target.value }))
+                                    }
+                                    placeholder="00000-000"
+                                />
+                                <Input
+                                    label="País"
+                                    value={newClientAddress.country_code || ''}
+                                    onChange={(e) =>
+                                        setNewClientAddress((prev) => ({
+                                            ...prev,
+                                            country_code: e.target.value.toUpperCase(),
+                                        }))
+                                    }
+                                    placeholder="BR"
+                                />
                             </div>
                         )}
 
@@ -444,4 +572,3 @@ export default function NewAppointmentPage() {
         </div>
     );
 }
-

@@ -11,18 +11,53 @@ import { api, TokenPair } from '@/lib/api';
 import Link from 'next/link';
 import styles from './register.module.css';
 
-const registerSchema = z.object({
-    business_name: z.string().min(2, 'Nome do negócio é obrigatório'),
-    owner_name: z.string().min(2, 'Seu nome é obrigatório'),
-    email: z.string().email('Email inválido'),
-    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
-    confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: 'Senhas não coincidem',
-    path: ['confirmPassword'],
-});
+const registerSchema = z
+    .object({
+        business_name: z.string().min(2, 'Nome do negocio e obrigatorio'),
+        owner_name: z.string().min(2, 'Seu nome e obrigatorio'),
+        email: z.string().email('Email invalido'),
+        password: z.string().min(8, 'Senha deve ter no minimo 8 caracteres'),
+        confirmPassword: z.string(),
+        address: z
+            .object({
+                street: z.string().max(200).optional(),
+                number: z.string().max(50).optional(),
+                complement: z.string().max(200).optional(),
+                neighborhood: z.string().max(200).optional(),
+                city: z.string().max(120).optional(),
+                state: z.string().max(80).optional(),
+                postal_code: z.string().max(20).optional(),
+                country_code: z.string().max(2, 'Pais deve ter 2 letras').optional(),
+            })
+            .optional(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+        message: 'Senhas nao coincidem',
+        path: ['confirmPassword'],
+    });
 
 type RegisterForm = z.infer<typeof registerSchema>;
+
+const normalizeOptionalText = (value: string | undefined): string | null => {
+    const trimmed = String(value || '').trim();
+    return trimmed || null;
+};
+
+const buildAddressPayload = (address: RegisterForm['address']) => {
+    if (!address) return null;
+    const payload = {
+        street: normalizeOptionalText(address.street),
+        number: normalizeOptionalText(address.number),
+        complement: normalizeOptionalText(address.complement),
+        neighborhood: normalizeOptionalText(address.neighborhood),
+        city: normalizeOptionalText(address.city),
+        state: normalizeOptionalText(address.state),
+        postal_code: normalizeOptionalText(address.postal_code),
+        country_code: normalizeOptionalText(address.country_code)?.toUpperCase() || null,
+    };
+    const hasAnyValue = Object.values(payload).some((value) => Boolean(value));
+    return hasAnyValue ? payload : null;
+};
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -51,24 +86,29 @@ export default function RegisterPage() {
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-|-$/g, '');
 
-            await api.post<TokenPair>('/api/v1/auth/register', {
-                email: data.email,
-                password: data.password,
-                slug,
-                business_name: data.business_name,
-                owner_name: data.owner_name,
-            }, { requiresAuth: false });
+            await api.post<TokenPair>(
+                '/api/v1/auth/register',
+                {
+                    email: data.email,
+                    password: data.password,
+                    slug,
+                    business_name: data.business_name,
+                    owner_name: data.owner_name,
+                    address: buildAddressPayload(data.address),
+                },
+                { requiresAuth: false }
+            );
 
             router.push('/register/success');
         } catch (err) {
             const error = err as { message?: string; status?: number };
-            
+
             if (error.status === 0) {
-                setSubmitError('O serviço está fora do ar no momento. Contate o administrador.');
+                setSubmitError('O servico esta fora do ar no momento. Contate o administrador.');
             } else if (error.status === 409) {
-                setSubmitError('Este email já está cadastrado. Tente fazer login.');
+                setSubmitError('Este email ja esta cadastrado. Tente fazer login.');
             } else if (error.status === 422) {
-                setSubmitError('Dados inválidos. Verifique os campos e tente novamente.');
+                setSubmitError('Dados invalidos. Verifique os campos e tente novamente.');
             } else {
                 setSubmitError(error.message || 'Erro ao criar conta. Tente novamente.');
             }
@@ -86,7 +126,7 @@ export default function RegisterPage() {
             <div className={styles.card}>
                 <div className={styles.header}>
                     <div className={styles.logo}>
-                        <span className={styles.logoIcon}>📅</span>
+                        <span className={styles.logoIcon}>R</span>
                         <span className={styles.logoText}>Ritmo</span>
                     </div>
                     <h1 className={styles.title}>Crie sua conta</h1>
@@ -94,15 +134,11 @@ export default function RegisterPage() {
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-                    {submitError && (
-                        <div className={styles.errorBanner}>
-                            {submitError}
-                        </div>
-                    )}
+                    {submitError && <div className={styles.errorBanner}>{submitError}</div>}
 
                     <Input
-                        label="Nome do seu negócio"
-                        placeholder="Salão da Maria"
+                        label="Nome do seu negocio"
+                        placeholder="Salao da Maria"
                         leftIcon={<Building2 size={18} />}
                         error={errors.business_name?.message}
                         {...register('business_name')}
@@ -114,6 +150,64 @@ export default function RegisterPage() {
                         leftIcon={<User size={18} />}
                         error={errors.owner_name?.message}
                         {...register('owner_name')}
+                    />
+
+                    <h3 className={styles.sectionTitle}>Endereco da unidade (opcional)</h3>
+
+                    <Input
+                        label="Logradouro"
+                        placeholder="Rua, avenida, etc."
+                        error={errors.address?.street?.message}
+                        {...register('address.street')}
+                    />
+
+                    <Input
+                        label="Numero"
+                        placeholder="123"
+                        error={errors.address?.number?.message}
+                        {...register('address.number')}
+                    />
+
+                    <Input
+                        label="Complemento"
+                        placeholder="Apto, sala, bloco"
+                        error={errors.address?.complement?.message}
+                        {...register('address.complement')}
+                    />
+
+                    <Input
+                        label="Bairro"
+                        placeholder="Bairro"
+                        error={errors.address?.neighborhood?.message}
+                        {...register('address.neighborhood')}
+                    />
+
+                    <Input
+                        label="Cidade"
+                        placeholder="Cidade"
+                        error={errors.address?.city?.message}
+                        {...register('address.city')}
+                    />
+
+                    <Input
+                        label="Estado"
+                        placeholder="SP"
+                        error={errors.address?.state?.message}
+                        {...register('address.state')}
+                    />
+
+                    <Input
+                        label="CEP"
+                        placeholder="00000-000"
+                        error={errors.address?.postal_code?.message}
+                        {...register('address.postal_code')}
+                    />
+
+                    <Input
+                        label="Pais"
+                        placeholder="BR"
+                        error={errors.address?.country_code?.message}
+                        {...register('address.country_code')}
                     />
 
                     <Input
@@ -128,7 +222,7 @@ export default function RegisterPage() {
                     <Input
                         label="Senha"
                         type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
+                        placeholder="********"
                         leftIcon={<Lock size={18} />}
                         rightIcon={
                             <button
@@ -142,7 +236,7 @@ export default function RegisterPage() {
                                     color: 'var(--color-text-secondary)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center'
+                                    justifyContent: 'center',
                                 }}
                                 title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                             >
@@ -156,7 +250,7 @@ export default function RegisterPage() {
                     <Input
                         label="Confirmar senha"
                         type={showConfirmPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
+                        placeholder="********"
                         leftIcon={<Lock size={18} />}
                         rightIcon={
                             <button
@@ -170,7 +264,7 @@ export default function RegisterPage() {
                                     color: 'var(--color-text-secondary)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center'
+                                    justifyContent: 'center',
                                 }}
                                 title={showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'}
                             >
@@ -181,24 +275,18 @@ export default function RegisterPage() {
                         {...register('confirmPassword')}
                     />
 
-                    <Button
-                        type="submit"
-                        fullWidth
-                        isLoading={isLoading}
-                        rightIcon={<ArrowRight size={18} />}
-                    >
-                        Criar conta grátis
+                    <Button type="submit" fullWidth isLoading={isLoading} rightIcon={<ArrowRight size={18} />}>
+                        Criar conta gratis
                     </Button>
 
                     <p className={styles.terms}>
-                        Ao criar uma conta, você concorda com nossos{' '}
-                        <Link href="/terms">Termos de Uso</Link> e{' '}
-                        <Link href="/privacy">Política de Privacidade</Link>.
+                        Ao criar uma conta, voce concorda com nossos <Link href="/terms">Termos de Uso</Link> e{' '}
+                        <Link href="/privacy">Politica de Privacidade</Link>.
                     </p>
                 </form>
 
                 <div className={styles.footer}>
-                    <span className={styles.footerText}>Já tem uma conta?</span>
+                    <span className={styles.footerText}>Ja tem uma conta?</span>
                     <Link href="/login" className={styles.loginLink}>
                         Fazer login
                     </Link>
