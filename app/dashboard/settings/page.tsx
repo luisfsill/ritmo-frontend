@@ -7,7 +7,7 @@ import { WhatsAppModal } from '@/components/ui/WhatsAppModal';
 import { useTheme } from '@/lib/theme-context';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
-import { uazapi, WhatsAppStorage } from '@/lib/uazapi';
+import { uazapi } from '@/lib/uazapi';
 import styles from './settings.module.css';
 
 type Tab = 'profile' | 'business' | 'notifications' | 'appearance' | 'integrations' | 'ai' | 'security';
@@ -126,20 +126,27 @@ export default function SettingsPage() {
                             setWhatsappStatus('rollout');
                             setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
                         } else if (capabilities.reason === 'missing_webhook_secret') {
-                            setWhatsappStatus('disconnected');
-                            setWhatsappStatusHint('Webhook pendente no servidor. Você pode conectar, mas eventos podem não chegar.');
+                            setWhatsappStatus('config_required');
+                            setWhatsappStatusHint('A integração do WhatsApp está bloqueada até a configuração do recebimento de mensagens ser concluída.');
                         } else {
                             setWhatsappStatus('error');
                             setWhatsappStatusHint('Integração temporariamente indisponível.');
                         }
                     } else {
-                        setWhatsappStatusHint(null);
-                        const legacyToken = WhatsAppStorage.getToken();
-                        const status = await uazapi.getStatus({ token: legacyToken || undefined });
-                        if (status.kind === 'pending') {
-                            setWhatsappStatus('pending');
+                        const integrationStatus = await uazapi.getIntegrationStatus();
+                        if (!integrationStatus.has_token) {
+                            setWhatsappStatus('disconnected');
+                            setWhatsappStatusHint(null);
+                        } else if (integrationStatus.instance_connected) {
+                            setWhatsappStatus('connected');
+                            if (integrationStatus.ready_for_inbound) {
+                                setWhatsappStatusHint(null);
+                            } else {
+                                setWhatsappStatusHint('WhatsApp conectado, mas o recebimento de mensagens ainda não está pronto.');
+                            }
                         } else {
-                            setWhatsappStatus(status.data.status.status.connected && status.data.status.status.loggedIn ? 'connected' : 'disconnected');
+                            setWhatsappStatus('disconnected');
+                            setWhatsappStatusHint(null);
                         }
                     }
                 } catch (err) {
@@ -148,8 +155,8 @@ export default function SettingsPage() {
                         setWhatsappStatus('disconnected');
                         setWhatsappStatusHint(null);
                     } else if (message.includes('uazapi_webhook_secret_missing')) {
-                        setWhatsappStatus('disconnected');
-                        setWhatsappStatusHint('Webhook pendente no servidor. Você pode conectar, mas eventos podem não chegar.');
+                        setWhatsappStatus('config_required');
+                        setWhatsappStatusHint('A integração do WhatsApp está bloqueada até a configuração do recebimento de mensagens ser concluída.');
                     } else {
                         setWhatsappStatus('error');
                         setWhatsappStatusHint(null);
@@ -214,7 +221,7 @@ export default function SettingsPage() {
             showToast('Erro ao conectar com Google Calendar. Tente novamente.', 'error');
             window.history.replaceState({}, '', window.location.pathname);
         }
-    }, [whatsappModalOpen]);
+    }, [whatsappModalOpen, user?.staff_id]);
 
     const handleSaveBusiness = async () => {
         if (!tenantProfile) return;
