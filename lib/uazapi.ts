@@ -76,11 +76,31 @@ export interface UazapiCreateInstanceData {
     instance?: UazapiInstance;
     token?: string;
   };
+  instance_token?: string;
   saved: boolean;
+}
+
+export interface UazapiIntegrationStatus {
+  messaging_provider: string;
+  has_uazapi_config: boolean;
+  has_token: boolean;
+  has_base_url: boolean;
+  instance_connected: boolean;
+  webhook_registered: boolean;
+  whatsapp_webhook_url: string | null;
+  webhook_secret_configured: boolean;
+  agent_worker_enabled: boolean;
+  ready_for_inbound: boolean;
+  ready_for_agent_pipeline: boolean;
+  blockers: string[];
+  recommended_actions: string[];
 }
 
 export interface UazapiConnectData {
   connect: ConnectResponse;
+  webhook_registered?: boolean;
+  webhook_error?: string | null;
+  integration_status?: UazapiIntegrationStatus;
 }
 
 export interface UazapiStatusData {
@@ -90,6 +110,9 @@ export interface UazapiStatusData {
 export interface UazapiWebhookData {
   webhook: WebhookResponse;
   url: string;
+  ready_for_inbound?: boolean;
+  blockers?: string[];
+  integration_status?: UazapiIntegrationStatus;
 }
 
 export interface UazapiDisconnectData {
@@ -130,6 +153,10 @@ function asOperationResult<T>(payload: T | PendingCommandResponse): UazapiResult
 class UazapiClient {
   async getCapabilities(): Promise<UazapiCapabilitiesData> {
     return api.get<UazapiCapabilitiesData>('/api/v1/uazapi/capabilities');
+  }
+
+  async getIntegrationStatus(): Promise<UazapiIntegrationStatus> {
+    return api.get<UazapiIntegrationStatus>('/api/v1/uazapi/integration/status');
   }
 
   async createInstance(name: string, tenantId: string): Promise<UazapiResult<UazapiCreateInstanceData>> {
