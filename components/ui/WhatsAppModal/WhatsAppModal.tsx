@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { X, MessageCircle, Loader2, RefreshCw, Smartphone, AlertCircle, Check, Unplug, Trash2, Clock3 } from 'lucide-react';
 import { toDataURL } from 'qrcode/lib/browser';
-import { uazapi, WhatsAppStorage, UazapiInstance, UazapiStatus } from '@/lib/uazapi';
+import { uazapi, WhatsAppStorage, UazapiInstance, UazapiIntegrationStatus, UazapiStatus } from '@/lib/uazapi';
 import { PendingCommandResponse, waitFrontCommand } from '@/lib/front-commands';
 import { useAuth } from '@/lib/auth-context';
 import styles from './WhatsAppModal.module.css';
@@ -14,7 +14,7 @@ interface WhatsAppModalProps {
   onClose: () => void;
 }
 
-type ConnectionState = 'loading' | 'no-instance' | 'disconnected' | 'connecting' | 'connected' | 'configuring-webhook' | 'error';
+type ConnectionState = 'loading' | 'no-instance' | 'disconnected' | 'connecting' | 'connected' | 'error';
 
 function normalizeError(err: unknown): string {
   if (err instanceof Error && err.message.trim()) {
@@ -84,12 +84,38 @@ function extractInstanceToken(payload: unknown): string | null {
   return extractFrom(nestedInstance);
 }
 
+function buildIntegrationWarning(
+  integrationStatus: UazapiIntegrationStatus | null | undefined,
+  webhookError?: string | null,
+): string | null {
+  if (!webhookError && integrationStatus?.ready_for_inbound !== false) {
+    return null;
+  }
+
+  const actions = (integrationStatus?.recommended_actions || []).filter((item) => item.trim().length > 0);
+  const blockers = (integrationStatus?.blockers || []).filter((item) => item.trim().length > 0);
+  const details = webhookError ? `Detalhe: ${humanizeUazapiError(webhookError)}.` : null;
+  const remediation =
+    actions.length > 0
+      ? `Acoes recomendadas: ${actions.join(' ')}`
+      : blockers.length > 0
+        ? `Bloqueios atuais: ${blockers.join(', ')}`
+        : null;
+  const parts = [
+    'WhatsApp conectado, mas o webhook ainda nao esta pronto para mensagens de entrada.',
+    details,
+    remediation,
+  ].filter(Boolean);
+  return parts.join(' ');
+}
+
 export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   const { user } = useAuth();
   const [state, setState] = useState<ConnectionState>('loading');
   const [instance, setInstance] = useState<UazapiInstance | null>(null);
   const [statusData, setStatusData] = useState<UazapiStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [integrationWarning, setIntegrationWarning] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<PendingCommandResponse | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -142,59 +168,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setState('disconnected');
   }, []);
 
-  const configureWebhook = useCallback(async (): Promise<boolean> => {
-    let retries = 0;
-    const maxRetries = 3;
-
-    while (retries < maxRetries) {
-      try {
-        console.log(`🔧 Configurando webhook automaticamente (tentativa ${retries + 1}/${maxRetries})...`);
-        
-        const response = await uazapi.setWebhook({
-          enabled: true,
-          events: ['messages', 'connection', 'messages_update'],
-          excludeMessages: ['wasSentByApi'],
-        });
-
-        if (response.kind === 'pending') {
-          const committed = await waitPendingCommand(response.pending);
-          if (committed) {
-            console.log('✅ Webhook configurado com sucesso!');
-            return true;
-          }
-          
-          // Se pending falhou, tenta novamente
-          retries++;
-          if (retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            continue;
-          }
-          return false;
-        }
-
-        // Sucesso direto sem pending
-        console.log('✅ Webhook configurado com sucesso!');
-        return true;
-      } catch (err) {
-        retries++;
-        console.error(`❌ Erro ao configurar webhook (tentativa ${retries}):`, err);
-        
-        if (retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          // Último retry falhou
-          const errorMessage = normalizeError(err);
-          if (!errorMessage.includes('missing_webhook_secret')) {
-            setError(`Webhook não configurado: ${humanizeUazapiError(errorMessage)}`);
-          }
-          return false;
-        }
-      }
-    }
-
-    return false;
-  }, [waitPendingCommand]);
-
   const loadInstanceStatus = useCallback(async () => {
     setError(null);
 
@@ -219,20 +192,13 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
 
         setPendingCommand(null);
         const status = statusResult.data.status;
-        
-        // Se conectou, configurar webhook antes de aplicar status final
-        if (status.status.connected && status.status.loggedIn) {
-          setState('configuring-webhook');
-          const webhookConfigured = await configureWebhook();
-          
-          if (webhookConfigured) {
-            console.log('✅ Fluxo de conexão completo: WhatsApp conectado e webhook configurado');
-          } else {
-            console.warn('⚠️ WhatsApp conectado mas webhook não foi configurado automaticamente');
-          }
-        }
-        
         applyStatus(status);
+        try {
+          const integrationStatus = await uazapi.getIntegrationStatus();
+          setIntegrationWarning(buildIntegrationWarning(integrationStatus));
+        } catch {
+          setIntegrationWarning(null);
+        }
         return;
       } catch (err) {
         const message = normalizeError(err);
@@ -245,6 +211,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             setState('no-instance');
             setInstance(null);
             setStatusData(null);
+            setIntegrationWarning(null);
             return;
           }
 
@@ -265,22 +232,25 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             continue;
           } catch (adoptErr) {
             setState('error');
+            setIntegrationWarning(null);
             setError(humanizeUazapiError(normalizeError(adoptErr)));
             return;
           }
         }
 
         setState('error');
+        setIntegrationWarning(null);
         setError(humanizeUazapiError(message));
         return;
       }
     }
-  }, [applyStatus, configureWebhook, waitPendingCommand]);
+  }, [applyStatus, waitPendingCommand]);
 
   useEffect(() => {
     if (isOpen) {
       setState('loading');
       setBlockedReason(null);
+      setIntegrationWarning(null);
       void (async () => {
         try {
           const capabilities = await uazapi.getCapabilities();
@@ -294,6 +264,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             }
             setBlockedReason(reason);
             setState('error');
+            setIntegrationWarning(null);
             setError(humanizeUazapiError(reason));
             return;
           }
@@ -360,17 +331,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           }
 
           const status = statusResult.data.status;
-          
-          // Se conectou durante polling, configurar webhook
-          if (status.status.connected && status.status.loggedIn && state === 'connecting') {
-            setState('configuring-webhook');
-            const webhookConfigured = await configureWebhook();
-            
-            if (webhookConfigured) {
-              console.log('✅ Conexão detectada via polling: webhook configurado');
-            }
-          }
-          
           applyStatus(status);
         } catch (err) {
           console.error('Erro no polling de status do WhatsApp:', err);
@@ -386,7 +346,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         clearInterval(interval);
       }
     };
-  }, [isOpen, state, applyStatus, configureWebhook]);
+  }, [isOpen, state, applyStatus]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -441,6 +401,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       if (result.data.connect.instance) {
         setInstance(result.data.connect.instance);
       }
+      setIntegrationWarning(buildIntegrationWarning(result.data.integration_status, result.data.webhook_error));
 
       setState('connecting');
       setTimeout(() => {
@@ -501,6 +462,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       WhatsAppStorage.clearToken();
       setInstance(null);
       setStatusData(null);
+      setIntegrationWarning(null);
       setState('no-instance');
       setQrImageSrc(null);
     } catch (err) {
@@ -583,13 +545,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
               Conectado
             </div>
           );
-        case 'configuring-webhook':
-          return (
-            <div className={`${styles.statusBadge} ${styles.statusConnecting}`}>
-              <span className={styles.statusIcon} />
-              Configurando webhook
-            </div>
-          );
         case 'connecting':
           return (
             <div className={`${styles.statusBadge} ${styles.statusConnecting}`}>
@@ -633,16 +588,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             </div>
           )}
         </div>
-
-        {state === 'configuring-webhook' && (
-          <div className={styles.loading}>
-            <Loader2 size={40} className={styles.spinner} />
-            <span className={styles.loadingText}>Configurando webhook automaticamente...</span>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>
-              Aguarde enquanto finalizamos a configuração
-            </p>
-          </div>
-        )}
 
         {state === 'connecting' && (
           <div className={styles.qrSection}>
@@ -753,6 +698,13 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             <div className={styles.error}>
               <AlertCircle size={18} />
               {error}
+            </div>
+          )}
+
+          {integrationWarning && (
+            <div className={styles.error}>
+              <AlertCircle size={18} />
+              {integrationWarning}
             </div>
           )}
 
