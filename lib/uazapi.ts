@@ -81,6 +81,18 @@ export interface UazapiCreateInstanceData {
 }
 
 export interface UazapiIntegrationStatus {
+  // Keep explicit known blockers while allowing backend-forward compatibility.
+  // Older/newer backends may return additional string values.
+  blockers: (
+    | 'provider_not_uazapi'
+    | 'missing_uazapi_token'
+    | 'missing_webhook_url'
+    | 'webhook_not_registered'
+    | 'webhook_url_localhost'
+    | 'missing_webhook_secret_prod'
+    | 'agent_worker_disabled'
+    | string
+  )[];
   messaging_provider: string;
   has_uazapi_config: boolean;
   has_token: boolean;
@@ -92,7 +104,6 @@ export interface UazapiIntegrationStatus {
   agent_worker_enabled: boolean;
   ready_for_inbound: boolean;
   ready_for_agent_pipeline: boolean;
-  blockers: string[];
   recommended_actions: string[];
 }
 

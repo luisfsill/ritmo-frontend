@@ -56,9 +56,10 @@ function userFacingActionForBlocker(blocker: string): string | null {
       return 'Confirme com o suporte se o canal oficial do WhatsApp está ativo para esta conta.';
     case 'missing_uazapi_token':
       return 'Crie uma nova instância e faça a conexão novamente.';
+    case 'webhook_not_registered':
     case 'missing_webhook_url':
     case 'webhook_url_localhost':
-      return 'Peça ao suporte para finalizar a configuração de recebimento de mensagens.';
+      return 'Conclua os pré-requisitos e reconecte para concluir a configuração automática de recebimento de mensagens.';
     case 'missing_webhook_secret_prod':
       return 'Peça ao suporte para concluir a configuração de segurança da integração.';
     case 'agent_worker_disabled':
@@ -69,9 +70,13 @@ function userFacingActionForBlocker(blocker: string): string | null {
 }
 
 function buildIntegrationWarning(
+  connected: boolean,
   integrationStatus: UazapiIntegrationStatus | null | undefined,
   webhookError?: string | null,
 ): string | null {
+  if (!connected) {
+    return null;
+  }
   if (!webhookError && integrationStatus?.ready_for_inbound !== false) {
     return null;
   }
@@ -173,9 +178,10 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         setPendingCommand(null);
         const status = statusResult.data.status;
         applyStatus(status);
+        const connected = Boolean(status?.status?.connected) && Boolean(status?.status?.loggedIn);
         try {
           const integrationStatus = await uazapi.getIntegrationStatus();
-          setIntegrationWarning(buildIntegrationWarning(integrationStatus));
+          setIntegrationWarning(buildIntegrationWarning(connected, integrationStatus));
         } catch {
           setIntegrationWarning(null);
         }
@@ -276,6 +282,14 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
 
           const status = statusResult.data.status;
           applyStatus(status);
+          if (status?.status?.connected && status?.status?.loggedIn) {
+            try {
+              const integrationStatus = await uazapi.getIntegrationStatus();
+              setIntegrationWarning(buildIntegrationWarning(true, integrationStatus));
+            } catch {
+              // Keep polling status even if integration endpoint is temporarily unavailable.
+            }
+          }
         } catch (err) {
           console.error('Erro no polling de status do WhatsApp:', err);
         } finally {
@@ -347,7 +361,10 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       if (result.data.connect.instance) {
         setInstance(result.data.connect.instance);
       }
-      setIntegrationWarning(buildIntegrationWarning(result.data.integration_status, result.data.webhook_error));
+      const connectedNow = Boolean(result.data.connect?.connected) && Boolean(result.data.connect?.loggedIn);
+      setIntegrationWarning(
+        buildIntegrationWarning(connectedNow, result.data.integration_status, result.data.webhook_error),
+      );
 
       setState('connecting');
       setTimeout(() => {
