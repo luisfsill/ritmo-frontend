@@ -8,6 +8,7 @@ import {
     ConversationListItem,
     getConversationsQuery,
     resumeConversation,
+    resumeConversationsBulk,
 } from '@/lib/conversations';
 import { useAuth } from '@/lib/auth-context';
 import styles from './conversations.module.css';
@@ -79,6 +80,10 @@ function getErrorMessage(err: unknown): string {
     return apiError.message || 'Erro ao carregar conversas.';
 }
 
+function isWaitingHuman(conversation: ConversationListItem): boolean {
+    return conversation.state === 'waiting_human' || conversation.requires_human;
+}
+
 export default function ConversationsPage() {
     const { user } = useAuth();
     const [filter, setFilter] = useState<ConversationFilter>('waiting_human');
@@ -87,20 +92,26 @@ export default function ConversationsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+    const [isBulkResumeModalOpen, setIsBulkResumeModalOpen] = useState(false);
     const [selectedConversation, setSelectedConversation] = useState<ConversationListItem | null>(null);
     const [resumingId, setResumingId] = useState<string | null>(null);
+    const [isBulkResuming, setIsBulkResuming] = useState(false);
 
     const canResume = useMemo(() => {
         const normalizedRole = String(user?.role || '').trim().toLowerCase();
         if (!normalizedRole) {
-            // Fallback defensivo: alguns tokens/sessões antigas podem não expor role no front.
-            // O backend continua protegendo via RBAC.
             return true;
         }
-        return normalizedRole === 'owner' || normalizedRole === 'admin';
+        return normalizedRole === 'owner' || normalizedRole === 'admin' || normalizedRole === 'staff';
     }, [user?.role]);
+
+    const waitingHumanConversations = useMemo(
+        () => conversations.filter((conversation) => isWaitingHuman(conversation)),
+        [conversations],
+    );
 
     const loadConversations = useCallback(
         async (reset: boolean) => {
@@ -151,6 +162,7 @@ export default function ConversationsPage() {
     const handleOpenResumeModal = (conversation: ConversationListItem) => {
         setSelectedConversation(conversation);
         setActionError(null);
+        setSuccessMessage(null);
         setIsResumeModalOpen(true);
     };
 
@@ -161,6 +173,18 @@ export default function ConversationsPage() {
         setIsResumeModalOpen(false);
     };
 
+    const handleOpenBulkResumeModal = () => {
+        setActionError(null);
+        setSuccessMessage(null);
+        setIsBulkResumeModalOpen(true);
+    };
+
+    const handleCloseBulkResumeModal = () => {
+        if (isBulkResuming) return;
+        setActionError(null);
+        setIsBulkResumeModalOpen(false);
+    };
+
     const handleResumeConversation = async () => {
         if (!selectedConversation) return;
 
@@ -168,6 +192,7 @@ export default function ConversationsPage() {
         const snapshot = conversations;
         setResumingId(target.id);
         setActionError(null);
+        setSuccessMessage(null);
 
         setConversations((previous) => {
             if (filter === 'waiting_human') {
@@ -194,6 +219,7 @@ export default function ConversationsPage() {
                     previous.map((item) => (item.id === updated.id ? updated : item)),
                 );
             }
+            setSuccessMessage('Conversa retomada com sucesso.');
             setIsResumeModalOpen(false);
             setSelectedConversation(null);
         } catch (err) {
@@ -201,6 +227,30 @@ export default function ConversationsPage() {
             setActionError(getErrorMessage(err));
         } finally {
             setResumingId(null);
+        }
+    };
+
+    const handleResumeAll = async () => {
+        const snapshot = conversations;
+        setIsBulkResuming(true);
+        setActionError(null);
+        setSuccessMessage(null);
+
+        setConversations((previous) =>
+            previous.filter((conversation) => !isWaitingHuman(conversation)),
+        );
+        setNextCursor(null);
+
+        try {
+            const response = await resumeConversationsBulk({ state: 'waiting_human' });
+            setSuccessMessage(`${response.resumed_count} conversa(s) retomada(s).`);
+            setIsBulkResumeModalOpen(false);
+        } catch (err) {
+            setConversations(snapshot);
+            setActionError(getErrorMessage(err));
+            await loadConversations(true);
+        } finally {
+            setIsBulkResuming(false);
         }
     };
 
@@ -213,15 +263,28 @@ export default function ConversationsPage() {
                         Acompanhe handoff e retome o agente quando necessario.
                     </p>
                 </div>
-                <Button
-                    variant="secondary"
-                    leftIcon={<RefreshCw size={16} />}
-                    onClick={() => void loadConversations(true)}
-                    isLoading={isLoading}
-                >
-                    Atualizar
-                </Button>
+                <div className={styles.headerActions}>
+                    {canResume && filter === 'waiting_human' && waitingHumanConversations.length > 0 && (
+                        <Button onClick={handleOpenBulkResumeModal} disabled={isLoading || isBulkResuming}>
+                            Retomar todos
+                        </Button>
+                    )}
+                    <Button
+                        variant="secondary"
+                        leftIcon={<RefreshCw size={16} />}
+                        onClick={() => void loadConversations(true)}
+                        isLoading={isLoading}
+                    >
+                        Atualizar
+                    </Button>
+                </div>
             </div>
+
+            {successMessage && (
+                <div className={styles.successState}>
+                    <span>{successMessage}</span>
+                </div>
+            )}
 
             <div className={styles.filters}>
                 {FILTERS.map((entry) => (
@@ -261,7 +324,7 @@ export default function ConversationsPage() {
                 <>
                     <div className={styles.cards}>
                         {conversations.map((conversation) => {
-                            const waitingHuman = conversation.state === 'waiting_human' || conversation.requires_human;
+                            const waitingHuman = isWaitingHuman(conversation);
                             return (
                                 <article key={conversation.id} className={styles.card}>
                                     <div className={styles.cardHeader}>
@@ -327,6 +390,27 @@ export default function ConversationsPage() {
                     </Button>
                     <Button onClick={handleResumeConversation} isLoading={Boolean(resumingId)}>
                         Confirmar retomada
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            <Modal
+                isOpen={isBulkResumeModalOpen}
+                onClose={handleCloseBulkResumeModal}
+                title="Retomar todos"
+                size="sm"
+            >
+                <p className={styles.modalText}>
+                    Esta acao retomara {waitingHumanConversations.length} conversa(s) aguardando humano.
+                    Deseja continuar?
+                </p>
+                {actionError && <p className={styles.modalError}>{actionError}</p>}
+                <ModalFooter>
+                    <Button variant="secondary" onClick={handleCloseBulkResumeModal} disabled={isBulkResuming}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleResumeAll} isLoading={isBulkResuming}>
+                        Confirmar retomada em massa
                     </Button>
                 </ModalFooter>
             </Modal>

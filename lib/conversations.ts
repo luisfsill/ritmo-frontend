@@ -27,6 +27,11 @@ export interface ConversationStats {
     total: number;
 }
 
+export interface ResumeConversationsBulkPayload {
+    state?: string;
+    ids?: string[];
+}
+
 export interface GetConversationsQueryParams {
     state?: string;
     limit?: number;
@@ -64,5 +69,14 @@ export async function resumeConversation(
 ): Promise<{ ok: boolean; conversation: ConversationListItem }> {
     return api.patch<{ ok: boolean; conversation: ConversationListItem }>(
         `/api/v1/conversations/${encodeURIComponent(conversationId)}/resume`,
+    );
+}
+
+export async function resumeConversationsBulk(
+    payload: ResumeConversationsBulkPayload,
+): Promise<{ ok: boolean; resumed_count: number }> {
+    return api.patch<{ ok: boolean; resumed_count: number }>(
+        '/api/v1/conversations/resume',
+        payload,
     );
 }
