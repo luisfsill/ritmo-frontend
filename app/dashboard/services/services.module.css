@@ -30,6 +30,14 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
 
 .searchWrapper {
@@ -69,23 +77,69 @@
     color: var(--color-text-secondary);
 }
 
-/* Grid */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(1, 1fr);
+/* Desktop table + mobile cards */
+.tableWrapper {
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-xl);
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.table th {
+    padding: var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-secondary);
+    text-align: left;
+    background-color: var(--color-bg-secondary);
+}
+
+.table td {
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    vertical-align: top;
+}
+
+.table tr:hover td {
+    background-color: var(--color-bg-tertiary);
+}
+
+.tableName {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 360px;
+}
+
+.tableName strong {
+    color: var(--color-text-primary);
+}
+
+.tableName span {
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}
+
+.mobileList {
+    display: none;
+    flex-direction: column;
     gap: var(--space-4);
-}
-
-@media (min-width: 640px) {
-    .grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 1024px) {
-    .grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 /* Card */
@@ -172,8 +226,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     color: var(--color-text-secondary);
     background: transparent;
     border: none;
@@ -190,6 +244,16 @@
 .actionButton.danger:hover {
     background-color: var(--color-error-subtle);
     color: var(--color-error);
+}
+
+@media (max-width: 768px) {
+    .tableWrapper {
+        display: none;
+    }
+
+    .mobileList {
+        display: flex;
+    }
 }
 
 /* States */

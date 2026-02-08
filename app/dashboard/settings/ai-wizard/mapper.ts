@@ -88,7 +88,7 @@ export function createDefaultWizardDraft(
             businessName: profile.business_name || catalog.tenant.business_name || '',
             businessType: profile.business_type || '',
             city: profile.address?.city || '',
-            neighborhood: profile.address?.street || '',
+            neighborhood: profile.address?.neighborhood || profile.address?.street || '',
             workingHoursSummary: 'Segunda a sábado, horário comercial.',
             paymentMethodsSummary: paymentMethodsFromPrompt || 'Pix, cartão e dinheiro.',
             servicesSummary: summarizeServices(catalog),

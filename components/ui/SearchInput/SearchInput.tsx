@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, X, ArrowRight } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import styles from './SearchInput.module.css';
 
 interface SearchInputProps {
@@ -12,10 +12,10 @@ interface SearchInputProps {
 
 export function SearchInput({ value, onChange, placeholder = 'Buscar...', className }: SearchInputProps) {
     return (
-        <form 
-            className={`${styles.searchWrapper} ${className || ''}`} 
-            onSubmit={(e) => e.preventDefault()} 
-            autoComplete="off"
+        <div
+            className={`${styles.searchWrapper} ${className || ''}`}
+            role="search"
+            aria-label="Campo de busca"
         >
             <Search size={18} className={styles.searchIcon} />
             <input
@@ -36,9 +36,6 @@ export function SearchInput({ value, onChange, placeholder = 'Buscar...', classN
                     <X size={16} />
                 </button>
             )}
-            <button className={styles.searchButton} type="submit" aria-label="Buscar">
-                <ArrowRight size={18} />
-            </button>
-        </form>
+        </div>
     );
 }

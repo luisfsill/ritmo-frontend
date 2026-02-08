@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, XCircle, AlertCircle, Loader2, type LucideIcon } from 'lucide-react';
-import { Button, SearchInput } from '@/components/ui';
+import { Button, SearchInput, useConfirmDialog, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './appointments.module.css';
@@ -58,6 +58,8 @@ interface Client {
 }
 
 export default function AppointmentsPage() {
+    const { showToast } = useToast();
+    const { confirm: confirmDialog } = useConfirmDialog();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
@@ -98,18 +100,21 @@ export default function AppointmentsPage() {
     }, [loadAppointments]);
 
     const handleCancel = async (id: string) => {
-        if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
+        const confirmed = await confirmDialog({
+            title: 'Cancelar agendamento',
+            message: 'Tem certeza que deseja cancelar este agendamento?',
+            confirmLabel: 'Cancelar agendamento',
+            cancelLabel: 'Voltar',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
         try {
             await api.post(`/api/v1/appointments/${id}/cancel`, { reason: 'Cancelado pelo estabelecimento' });
             setAppointments(appointments.map(a => a.id === id ? { ...a, status: 'canceled' } : a));
+            showToast('Agendamento cancelado com sucesso.', 'success');
         } catch (err) {
             const apiError = err as ApiError;
-            
-            if (apiError.status === 0) {
-                alert('O serviço está fora do ar no momento. Contate o administrador.');
-            } else {
-                alert(apiError.message || 'Erro ao cancelar agendamento. Tente novamente.');
-            }
+            showToast(apiError.message || 'Erro ao cancelar agendamento. Tente novamente.', 'error');
         }
     };
 
@@ -200,61 +205,117 @@ export default function AppointmentsPage() {
                     <p>{searchQuery || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Os agendamentos aparecerão aqui'}</p>
                 </div>
             ) : (
-                <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Data/Hora</th>
-                                <th>Cliente</th>
-                                <th>Serviço</th>
-                                <th>Profissional</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredAppointments.map((apt) => {
-                                const { date, time } = formatDateTime(apt.start_at);
-                                const normalizedStatus = statusAliases[apt.status] ?? apt.status;
-                                const status = getStatusPresentation(apt.status);
-                                const StatusIcon = status.icon;
-                                const client = getClientInfo(apt.client_id);
+                <>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Cliente</th>
+                                    <th>Serviço</th>
+                                    <th>Profissional</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredAppointments.map((apt) => {
+                                    const { date, time } = formatDateTime(apt.start_at);
+                                    const normalizedStatus = statusAliases[apt.status] ?? apt.status;
+                                    const status = getStatusPresentation(apt.status);
+                                    const StatusIcon = status.icon;
+                                    const client = getClientInfo(apt.client_id);
 
-                                return (
-                                    <tr key={apt.id}>
-                                        <td>
-                                            <div className={styles.dateTime}>
-                                                <span className={styles.date}>{date}</span>
-                                                <span className={styles.time}>{time}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className={styles.client}>
-                                                <span className={styles.clientName}>{client.name}</span>
-                                                <span className={styles.clientPhone}>{client.phone}</span>
-                                            </div>
-                                        </td>
-                                        <td>{getServiceName(apt.service_id)}</td>
-                                        <td>{getStaffName(apt.staff_id)}</td>
-                                        <td>
-                                            <span className={`${styles.statusBadge} ${styles[status.color]}`}>
-                                                <StatusIcon size={14} />
-                                                {status.label}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {normalizedStatus === 'booked' || normalizedStatus === 'confirmed' ? (
-                                                <button className={styles.actionButton} onClick={() => handleCancel(apt.id)}>
-                                                    <XCircle size={16} />
-                                                </button>
-                                            ) : null}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                    return (
+                                        <tr key={apt.id}>
+                                            <td>
+                                                <div className={styles.dateTime}>
+                                                    <span className={styles.date}>{date}</span>
+                                                    <span className={styles.time}>{time}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className={styles.client}>
+                                                    <span className={styles.clientName}>{client.name}</span>
+                                                    <span className={styles.clientPhone}>{client.phone}</span>
+                                                </div>
+                                            </td>
+                                            <td>{getServiceName(apt.service_id)}</td>
+                                            <td>{getStaffName(apt.staff_id)}</td>
+                                            <td>
+                                                <span className={`${styles.statusBadge} ${styles[status.color]}`}>
+                                                    <StatusIcon size={14} />
+                                                    {status.label}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {normalizedStatus === 'booked' || normalizedStatus === 'confirmed' ? (
+                                                    <button
+                                                        className={styles.actionButton}
+                                                        onClick={() => void handleCancel(apt.id)}
+                                                        aria-label={`Cancelar agendamento de ${client.name}`}
+                                                    >
+                                                        <XCircle size={16} />
+                                                    </button>
+                                                ) : null}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className={styles.mobileCards}>
+                        {filteredAppointments.map((apt) => {
+                            const { date, time } = formatDateTime(apt.start_at);
+                            const normalizedStatus = statusAliases[apt.status] ?? apt.status;
+                            const status = getStatusPresentation(apt.status);
+                            const StatusIcon = status.icon;
+                            const client = getClientInfo(apt.client_id);
+
+                            return (
+                                <article key={`mobile-${apt.id}`} className={styles.mobileCard}>
+                                    <div className={styles.mobileTop}>
+                                        <div className={styles.dateTime}>
+                                            <span className={styles.date}>{date}</span>
+                                            <span className={styles.time}>{time}</span>
+                                        </div>
+                                        <span className={`${styles.statusBadge} ${styles[status.color]}`}>
+                                            <StatusIcon size={14} />
+                                            {status.label}
+                                        </span>
+                                    </div>
+                                    <div className={styles.mobileBody}>
+                                        <div className={styles.mobileLine}>
+                                            <strong>Cliente:</strong> {client.name}
+                                        </div>
+                                        <div className={styles.mobileLine}>
+                                            <strong>Telefone:</strong> {client.phone}
+                                        </div>
+                                        <div className={styles.mobileLine}>
+                                            <strong>Serviço:</strong> {getServiceName(apt.service_id)}
+                                        </div>
+                                        <div className={styles.mobileLine}>
+                                            <strong>Profissional:</strong> {getStaffName(apt.staff_id)}
+                                        </div>
+                                    </div>
+                                    {(normalizedStatus === 'booked' || normalizedStatus === 'confirmed') && (
+                                        <div className={styles.mobileActions}>
+                                            <button
+                                                className={styles.actionButton}
+                                                onClick={() => void handleCancel(apt.id)}
+                                                aria-label={`Cancelar agendamento de ${client.name}`}
+                                            >
+                                                <XCircle size={16} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </article>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
     );

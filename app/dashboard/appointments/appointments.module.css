@@ -178,6 +178,12 @@
     min-width: 600px;
 }
 
+@media (max-width: 768px) {
+    .tableWrapper {
+        display: none;
+    }
+}
+
 .table th {
     padding: var(--space-4);
     font-size: var(--text-sm);
@@ -256,8 +262,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     color: var(--color-text-secondary);
     background: transparent;
     border: none;
@@ -304,4 +310,54 @@
 .emptyState p,
 .loadingState span {
     color: var(--color-text-secondary);
+}
+
+.mobileCards {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.mobileCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.mobileTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.mobileBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.mobileLine {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-relaxed);
+}
+
+.mobileLine strong {
+    color: var(--color-text-primary);
+}
+
+.mobileActions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .mobileCards {
+        display: flex;
+    }
 }

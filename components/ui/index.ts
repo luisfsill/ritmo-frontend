@@ -6,3 +6,5 @@ export { ThemeToggle } from './ThemeToggle';
 export { Modal, ModalFooter } from './Modal';
 export { WhatsAppModal } from './WhatsAppModal';
 export { SearchInput } from './SearchInput';
+export { ToastProvider, useToast } from './Toast';
+export { ConfirmDialogProvider, useConfirmDialog } from './ConfirmDialog';

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Loader2 } from 'lucide-react';
-import { Button, Input, Modal, ModalFooter } from '@/components/ui';
-import { api } from '@/lib/api';
+import { Button, Input, Modal, ModalFooter, useToast } from '@/components/ui';
+import { api, ApiError } from '@/lib/api';
 import { getCatalog, type CatalogResponse } from '@/lib/catalog';
 import styles from './calendar.module.css';
 
@@ -35,6 +35,7 @@ interface Client {
 }
 
 export default function CalendarPage() {
+    const { showToast } = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [appointments, setAppointments] = useState<Record<string, Appointment[]>>({});
@@ -171,18 +172,18 @@ export default function CalendarPage() {
 
     const handleSave = async () => {
         if (!formData.client_name.trim() || !formData.client_phone.trim()) {
-            alert('Nome e telefone do cliente sÃ£o obrigatÃ³rios');
+            showToast('Nome e telefone do cliente são obrigatórios.', 'error');
             return;
         }
         if (!formData.service_id || !formData.staff_id) {
-            alert('Selecione o serviÃ§o e o profissional');
+            showToast('Selecione o serviço e o profissional.', 'error');
             return;
         }
 
         setSaving(true);
         try {
             const startAt = new Date(`${formData.date}T${formData.time}:00`);
-            
+
             const payload = {
                 client_name: formData.client_name.trim(),
                 client_phone: formData.client_phone.trim(),
@@ -192,13 +193,20 @@ export default function CalendarPage() {
             };
 
             await api.post('/api/v1/appointments', payload);
-            
+
             // Limpa o cache para recarregar os agendamentos
             setAppointments({});
             closeModal();
+            showToast('Agendamento criado com sucesso.', 'success');
         } catch (err) {
-            const error = err as { message?: string };
-            alert(error.message || 'Erro ao criar agendamento. Tente novamente.');
+            const apiError = err as ApiError;
+            if (apiError.status === 0) {
+                showToast('O serviço está fora do ar no momento. Contate o administrador.', 'error');
+            } else if (apiError.status === 409) {
+                showToast('Este horário já está ocupado. Escolha outro horário.', 'error');
+            } else {
+                showToast(apiError.message || 'Erro ao criar agendamento. Tente novamente.', 'error');
+            }
         } finally {
             setSaving(false);
         }
@@ -412,3 +420,4 @@ export default function CalendarPage() {
         </div>
     );
 }
+

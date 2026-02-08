@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, ReactNode } from 'react';
+import { useEffect, useId, useRef, ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
@@ -23,20 +23,64 @@ export function Modal({
     showCloseButton = true,
 }: ModalProps) {
     const overlayRef = useRef<HTMLDivElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+    const titleId = useId();
 
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+        if (!isOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const container = dialogRef.current;
+            if (!container) return;
+            const focusable = Array.from(
+                container.querySelectorAll<HTMLElement>(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                )
+            ).filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
+            if (focusable.length === 0) {
+                e.preventDefault();
+                container.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement as HTMLElement | null;
+            if (e.shiftKey && active === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && active === last) {
+                e.preventDefault();
+                first.focus();
+            }
         };
 
-        if (isOpen) {
-            document.addEventListener('keydown', handleEscape);
-            document.body.style.overflow = 'hidden';
-        }
+        lastFocusedElementRef.current = document.activeElement as HTMLElement | null;
+        document.addEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = 'hidden';
+        const focusTimeoutId = window.setTimeout(() => {
+            const container = dialogRef.current;
+            if (!container) return;
+            const focusable = container.querySelector<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            (focusable || container).focus();
+        }, 0);
 
         return () => {
-            document.removeEventListener('keydown', handleEscape);
+            window.clearTimeout(focusTimeoutId);
+            document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = '';
+            const previous = lastFocusedElementRef.current;
+            if (previous && typeof previous.focus === 'function') {
+                previous.focus();
+            }
         };
     }, [isOpen, onClose]);
 
@@ -48,9 +92,16 @@ export function Modal({
 
     const modal = (
         <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
-            <div className={`${styles.modal} ${styles[size]}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div
+                ref={dialogRef}
+                className={`${styles.modal} ${styles[size]}`}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
+            >
                 <div className={styles.header}>
-                    <h2 id="modal-title" className={styles.title}>{title}</h2>
+                    <h2 id={titleId} className={styles.title}>{title}</h2>
                     {showCloseButton && (
                         <button className={styles.closeButton} onClick={onClose} aria-label="Fechar">
                             <X size={20} />

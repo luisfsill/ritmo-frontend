@@ -46,7 +46,19 @@ export interface TenantProfileForWizard {
     business_name: string;
     business_type: string | null;
     phone: string | null;
-    address: { street?: string; city?: string } | null;
+    address: {
+        formatted?: string | null;
+        street?: string | null;
+        number?: string | null;
+        complement?: string | null;
+        neighborhood?: string | null;
+        city?: string | null;
+        state?: string | null;
+        postal_code?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+    } | null;
 }
 
 export interface TenantPromptForWizard {

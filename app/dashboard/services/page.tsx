@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Clock, DollarSign, Loader2 } from 'lucide-react';
-import { Button, Input, SearchInput, Modal, ModalFooter } from '@/components/ui';
+import { Button, Input, SearchInput, Modal, ModalFooter, useConfirmDialog, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './services.module.css';
 
@@ -32,6 +32,8 @@ interface Service {
 }
 
 export default function ServicesPage() {
+    const { showToast } = useToast();
+    const { confirm: confirmDialog } = useConfirmDialog();
     const [services, setServices] = useState<Service[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -76,19 +78,22 @@ export default function ServicesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Tem certeza que deseja excluir este serviço?')) return;
+        const confirmed = await confirmDialog({
+            title: 'Excluir serviço',
+            message: 'Tem certeza que deseja excluir este serviço?',
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         try {
             await api.delete(`/api/v1/services/${id}`);
             setServices(services.filter(s => s.id !== id));
+            showToast('Serviço excluído com sucesso.', 'success');
         } catch (err) {
             const apiError = err as ApiError;
-            
-            if (apiError.status === 0) {
-                alert('O serviço está fora do ar no momento. Contate o administrador.');
-            } else {
-                alert(apiError.message || 'Erro ao excluir serviço. Tente novamente.');
-            }
+            showToast(apiError.message || 'Erro ao excluir serviço. Tente novamente.', 'error');
         }
     };
 
@@ -158,7 +163,7 @@ export default function ServicesPage() {
 
     const handleSave = async () => {
         if (!formData.name.trim()) {
-            alert('O nome do serviço é obrigatório');
+            showToast('O nome do serviço é obrigatório.', 'error');
             return;
         }
 
@@ -179,15 +184,17 @@ export default function ServicesPage() {
             if (editingService) {
                 const updated = await api.patch<Service>(`/api/v1/services/${editingService.id}`, payload);
                 setServices(services.map(s => s.id === editingService.id ? updated : s));
+                showToast('Serviço atualizado com sucesso.', 'success');
             } else {
                 const created = await api.post<Service>('/api/v1/services', payload);
                 setServices([...services, created]);
+                showToast('Serviço criado com sucesso.', 'success');
             }
 
             closeModal();
         } catch (err) {
             const apiError = err as ApiError;
-            alert(apiError.message || 'Erro ao salvar serviço. Tente novamente.');
+            showToast(apiError.message || 'Erro ao salvar serviço. Tente novamente.', 'error');
         } finally {
             setSaving(false);
         }
@@ -266,50 +273,107 @@ export default function ServicesPage() {
                     )}
                 </div>
             ) : (
-                <div className={styles.grid}>
-                    {filteredServices.map((service) => (
-                        <div key={service.id} className={styles.card}>
-                            <div className={styles.cardHeader}>
-                                <h3 className={styles.cardTitle}>{service.name}</h3>
-                                <span className={`${styles.status} ${service.is_active ? styles.active : styles.inactive}`}>
-                                    {service.is_active ? 'Ativo' : 'Inativo'}
-                                </span>
-                            </div>
+                <>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Serviço</th>
+                                    <th>Duração</th>
+                                    <th>Preço</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredServices.map((service) => (
+                                    <tr key={service.id}>
+                                        <td>
+                                            <div className={styles.tableName}>
+                                                <strong>{service.name}</strong>
+                                                {service.description ? <span>{service.description}</span> : null}
+                                            </div>
+                                        </td>
+                                        <td>{formatDuration(service.duration_minutes)}</td>
+                                        <td>{formatPriceFromCents(service.price_cents)}</td>
+                                        <td>
+                                            <span className={`${styles.status} ${service.is_active ? styles.active : styles.inactive}`}>
+                                                {service.is_active ? 'Ativo' : 'Inativo'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className={styles.actions}>
+                                                <button
+                                                    className={styles.actionButton}
+                                                    onClick={() => openEditModal(service)}
+                                                    title="Editar"
+                                                    aria-label={`Editar ${service.name}`}
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    className={`${styles.actionButton} ${styles.danger}`}
+                                                    onClick={() => void handleDelete(service.id)}
+                                                    title="Excluir"
+                                                    aria-label={`Excluir ${service.name}`}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-                            {service.description && (
-                                <p className={styles.cardDescription}>{service.description}</p>
-                            )}
-
-                            <div className={styles.cardMeta}>
-                                <div className={styles.metaItem}>
-                                    <Clock size={16} />
-                                    <span>{formatDuration(service.duration_minutes)}</span>
+                    <div className={styles.mobileList}>
+                        {filteredServices.map((service) => (
+                            <article key={`mobile-${service.id}`} className={styles.card}>
+                                <div className={styles.cardHeader}>
+                                    <h3 className={styles.cardTitle}>{service.name}</h3>
+                                    <span className={`${styles.status} ${service.is_active ? styles.active : styles.inactive}`}>
+                                        {service.is_active ? 'Ativo' : 'Inativo'}
+                                    </span>
                                 </div>
-                                <div className={styles.metaItem}>
-                                    <DollarSign size={16} />
-                                    <span>{formatPriceFromCents(service.price_cents)}</span>
-                                </div>
-                            </div>
 
-                            <div className={styles.cardActions}>
-                                <button
-                                    className={styles.actionButton}
-                                    onClick={() => openEditModal(service)}
-                                    title="Editar"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button
-                                    className={`${styles.actionButton} ${styles.danger}`}
-                                    onClick={() => handleDelete(service.id)}
-                                    title="Excluir"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                                {service.description && (
+                                    <p className={styles.cardDescription}>{service.description}</p>
+                                )}
+
+                                <div className={styles.cardMeta}>
+                                    <div className={styles.metaItem}>
+                                        <Clock size={16} />
+                                        <span>{formatDuration(service.duration_minutes)}</span>
+                                    </div>
+                                    <div className={styles.metaItem}>
+                                        <DollarSign size={16} />
+                                        <span>{formatPriceFromCents(service.price_cents)}</span>
+                                    </div>
+                                </div>
+
+                                <div className={styles.cardActions}>
+                                    <button
+                                        className={styles.actionButton}
+                                        onClick={() => openEditModal(service)}
+                                        title="Editar"
+                                        aria-label={`Editar ${service.name}`}
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        className={`${styles.actionButton} ${styles.danger}`}
+                                        onClick={() => void handleDelete(service.id)}
+                                        title="Excluir"
+                                        aria-label={`Excluir ${service.name}`}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </>
             )}
 
             {/* Modal de Criar/Editar Serviço */}

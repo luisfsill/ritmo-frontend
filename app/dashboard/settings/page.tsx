@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, Building2, Bell, Palette, Link2, Shield, Save, Loader2, MessageCircle, Calendar, Bot, Check, X } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { User, Building2, Bell, Palette, Link2, Shield, Save, Loader2, MessageCircle, Calendar, Bot } from 'lucide-react';
+import { Button, Input, useConfirmDialog, useToast } from '@/components/ui';
 import { WhatsAppModal } from '@/components/ui/WhatsAppModal';
 import { useTheme } from '@/lib/theme-context';
 import { useAuth } from '@/lib/auth-context';
@@ -29,7 +29,7 @@ interface TenantProfile {
     business_name: string;
     business_type: string | null;
     phone: string | null;
-    address: { street?: string; city?: string } | null;
+    address: TenantAddress | null;
 }
 
 interface GoogleCalendarStatus {
@@ -37,10 +37,37 @@ interface GoogleCalendarStatus {
     email?: string;
 }
 
+interface TenantAddress {
+    formatted?: string | null;
+    street?: string | null;
+    number?: string | null;
+    complement?: string | null;
+    neighborhood?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country_code?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    place_id?: string | null;
+    geocoded_at?: string | null;
+    geocode_source?: string | null;
+}
+
+interface TenantAddressCandidate extends TenantAddress {
+    relevance: number;
+}
+
+interface GeocodeResponse {
+    candidates: TenantAddressCandidate[];
+}
+
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<Tab>('profile');
     const { theme, setTheme } = useTheme();
     const { user, refreshUser } = useAuth();
+    const { showToast } = useToast();
+    const { confirm: confirmDialog } = useConfirmDialog();
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
@@ -50,14 +77,8 @@ export default function SettingsPage() {
     const [whatsappStatusHint, setWhatsappStatusHint] = useState<string | null>(null);
     const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus>({ connected: false });
     const [googleCalendarLoading, setGoogleCalendarLoading] = useState(false);
-
-    // Toast notification state
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
+    const [isGeocoding, setIsGeocoding] = useState(false);
+    const [geocodeCandidates, setGeocodeCandidates] = useState<TenantAddressCandidate[]>([]);
     
     // Business state (from /tenants/profile)
     const [tenantProfile, setTenantProfile] = useState<TenantProfile | null>(null);
@@ -179,7 +200,7 @@ export default function SettingsPage() {
             showToast('Erro ao conectar com Google Calendar. Tente novamente.', 'error');
             window.history.replaceState({}, '', window.location.pathname);
         }
-    }, [whatsappModalOpen, user?.staff_id]);
+    }, [showToast, whatsappModalOpen, user?.staff_id]);
 
     const handleSaveBusiness = async () => {
         if (!tenantProfile) return;
@@ -191,7 +212,9 @@ export default function SettingsPage() {
                 slug: tenantProfile.slug,
                 phone: tenantProfile.phone,
                 business_type: tenantProfile.business_type,
+                address: tenantProfile.address || null,
             });
+            setGeocodeCandidates([]);
             showToast('Dados do negócio atualizados com sucesso!', 'success');
         } catch (err) {
             const apiError = err as ApiError;
@@ -217,6 +240,113 @@ export default function SettingsPage() {
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const formatted = formatPhone(e.target.value);
         setTenantProfile(prev => prev ? { ...prev, phone: formatted } : null);
+    };
+
+    const updateAddressField = (field: keyof TenantAddress, value: string) => {
+        setTenantProfile((prev) => {
+            if (!prev) return prev;
+            const normalizedValue = value || null;
+            const isGeoDerivedField = [
+                'street',
+                'number',
+                'complement',
+                'neighborhood',
+                'city',
+                'state',
+                'postal_code',
+                'country_code',
+            ].includes(field);
+            return {
+                ...prev,
+                address: {
+                    ...(prev.address || {}),
+                    [field]: normalizedValue,
+                    ...(isGeoDerivedField
+                        ? {
+                              formatted: null,
+                              latitude: null,
+                              longitude: null,
+                              place_id: null,
+                              geocoded_at: null,
+                              geocode_source: null,
+                          }
+                        : {}),
+                },
+            };
+        });
+        setGeocodeCandidates([]);
+    };
+
+    const buildAddressQuery = (address: TenantAddress | null): string => {
+        if (!address) return '';
+        const parts = [
+            address.street,
+            address.number,
+            address.neighborhood,
+            address.city,
+            address.state,
+            address.postal_code,
+            address.country_code || 'BR',
+        ]
+            .map((part) => String(part || '').trim())
+            .filter(Boolean);
+        return parts.join(', ');
+    };
+
+    const handleGeocodeAddress = async () => {
+        const query = buildAddressQuery(tenantProfile?.address || null);
+        if (query.length < 5) {
+            showToast('Preencha mais campos do endereço antes de buscar coordenadas.', 'error');
+            return;
+        }
+
+        setIsGeocoding(true);
+        try {
+            const response = await api.post<GeocodeResponse>('/api/v1/tenants/profile/geocode', { query });
+            const candidates = response.candidates || [];
+            setGeocodeCandidates(candidates);
+            if (candidates.length === 0) {
+                showToast('Nenhum endereço encontrado para geolocalização.', 'info');
+            } else {
+                showToast(`${candidates.length} endereço(s) sugerido(s). Selecione o correto.`, 'success');
+            }
+        } catch (err) {
+            const apiError = err as ApiError;
+            if (apiError.status === 400) {
+                showToast('Endereço inválido para geolocalização.', 'error');
+            } else {
+                showToast('Geolocalização indisponível no momento. Tente novamente.', 'error');
+            }
+        } finally {
+            setIsGeocoding(false);
+        }
+    };
+
+    const applyGeocodeCandidate = (candidate: TenantAddressCandidate) => {
+        setTenantProfile((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                address: {
+                    formatted: candidate.formatted || null,
+                    street: candidate.street || null,
+                    number: candidate.number || null,
+                    complement: candidate.complement || null,
+                    neighborhood: candidate.neighborhood || null,
+                    city: candidate.city || null,
+                    state: candidate.state || null,
+                    postal_code: candidate.postal_code || null,
+                    country_code: candidate.country_code || null,
+                    latitude: candidate.latitude ?? null,
+                    longitude: candidate.longitude ?? null,
+                    place_id: candidate.place_id || null,
+                    geocoded_at: candidate.geocoded_at || null,
+                    geocode_source: candidate.geocode_source || 'google_maps',
+                },
+            };
+        });
+        setGeocodeCandidates([]);
+        showToast('Endereço geocodificado aplicado com sucesso.', 'success');
     };
 
     const handleSaveProfile = async () => {
@@ -261,7 +391,14 @@ export default function SettingsPage() {
     };
 
     const handleDisconnectGoogleCalendar = async () => {
-        if (!confirm('Tem certeza que deseja desconectar o Google Calendar?')) return;
+        const confirmed = await confirmDialog({
+            title: 'Desconectar Google Calendar',
+            message: 'Tem certeza que deseja desconectar o Google Calendar?',
+            confirmLabel: 'Desconectar',
+            cancelLabel: 'Cancelar',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
         
         setGoogleCalendarLoading(true);
         try {
@@ -293,21 +430,6 @@ export default function SettingsPage() {
 
     return (
         <div className={styles.page}>
-            {/* Toast Notification */}
-            {toast && (
-                <div className={`${styles.toast} ${styles[`toast${toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}`]}`}>
-                    <div className={styles.toastContent}>
-                        {toast.type === 'success' && <Check size={18} />}
-                        {toast.type === 'error' && <X size={18} />}
-                        {toast.type === 'info' && <Bot size={18} />}
-                        <span>{toast.message}</span>
-                    </div>
-                    <button className={styles.toastClose} onClick={() => setToast(null)}>
-                        <X size={16} />
-                    </button>
-                </div>
-            )}
-
             <div className={styles.header}>
                 <h1 className={styles.title}>Configurações</h1>
                 <p className={styles.subtitle}>Gerencie suas preferências e configurações</p>
@@ -380,6 +502,104 @@ export default function SettingsPage() {
                                     value={tenantProfile?.business_type || ''}
                                     onChange={(e) => setTenantProfile(prev => prev ? { ...prev, business_type: e.target.value } : null)}
                                 />
+
+                                <h3 className={styles.addressTitle}>Endereço da unidade</h3>
+                                <div className={styles.addressGrid}>
+                                    <Input
+                                        label="Logradouro"
+                                        value={tenantProfile?.address?.street || ''}
+                                        onChange={(e) => updateAddressField('street', e.target.value)}
+                                        placeholder="Rua, avenida, etc."
+                                    />
+                                    <Input
+                                        label="Número"
+                                        value={tenantProfile?.address?.number || ''}
+                                        onChange={(e) => updateAddressField('number', e.target.value)}
+                                        placeholder="123"
+                                    />
+                                    <Input
+                                        label="Complemento"
+                                        value={tenantProfile?.address?.complement || ''}
+                                        onChange={(e) => updateAddressField('complement', e.target.value)}
+                                        placeholder="Sala, loja, bloco"
+                                    />
+                                    <Input
+                                        label="Bairro"
+                                        value={tenantProfile?.address?.neighborhood || ''}
+                                        onChange={(e) => updateAddressField('neighborhood', e.target.value)}
+                                        placeholder="Bairro"
+                                    />
+                                    <Input
+                                        label="Cidade"
+                                        value={tenantProfile?.address?.city || ''}
+                                        onChange={(e) => updateAddressField('city', e.target.value)}
+                                        placeholder="Cidade"
+                                    />
+                                    <Input
+                                        label="Estado"
+                                        value={tenantProfile?.address?.state || ''}
+                                        onChange={(e) => updateAddressField('state', e.target.value)}
+                                        placeholder="SP"
+                                    />
+                                    <Input
+                                        label="CEP"
+                                        value={tenantProfile?.address?.postal_code || ''}
+                                        onChange={(e) => updateAddressField('postal_code', e.target.value)}
+                                        placeholder="00000-000"
+                                    />
+                                    <Input
+                                        label="País"
+                                        value={tenantProfile?.address?.country_code || 'BR'}
+                                        onChange={(e) => updateAddressField('country_code', e.target.value.toUpperCase())}
+                                        placeholder="BR"
+                                    />
+                                </div>
+
+                                <div className={styles.geocodeActions}>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={handleGeocodeAddress}
+                                        isLoading={isGeocoding}
+                                    >
+                                        Buscar coordenadas
+                                    </Button>
+                                </div>
+
+                                {geocodeCandidates.length > 0 && (
+                                    <div className={styles.geocodeCandidates}>
+                                        <p className={styles.geocodeHint}>Selecione o endereço correto:</p>
+                                        {geocodeCandidates.map((candidate, index) => (
+                                            <button
+                                                key={`${candidate.place_id || 'candidate'}-${index}`}
+                                                type="button"
+                                                className={styles.candidateButton}
+                                                onClick={() => applyGeocodeCandidate(candidate)}
+                                            >
+                                                <span>{candidate.formatted || 'Endereço sugerido'}</span>
+                                                <small>
+                                                    {typeof candidate.latitude === 'number' && typeof candidate.longitude === 'number'
+                                                        ? `${candidate.latitude.toFixed(6)}, ${candidate.longitude.toFixed(6)}`
+                                                        : 'Sem coordenadas'}
+                                                </small>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {tenantProfile?.address?.formatted && (
+                                    <div className={styles.addressPreview}>
+                                        <strong>Endereço confirmado:</strong>
+                                        <span>{tenantProfile.address.formatted}</span>
+                                        {typeof tenantProfile.address.latitude === 'number' &&
+                                            typeof tenantProfile.address.longitude === 'number' && (
+                                                <span>
+                                                    Lat/Lng: {tenantProfile.address.latitude.toFixed(6)},{' '}
+                                                    {tenantProfile.address.longitude.toFixed(6)}
+                                                </span>
+                                            )}
+                                    </div>
+                                )}
                             </div>
                             <div className={styles.actions}>
                                 <Button onClick={handleSaveBusiness} isLoading={isSaving}>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, Clock, User, Scissors } from 'lucide-react';
 import Link from 'next/link';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { getCatalog, type CatalogService, type CatalogStaff } from '@/lib/catalog';
 import styles from './new.module.css';
@@ -29,6 +29,7 @@ interface AvailabilityResponse {
 
 export default function NewAppointmentPage() {
     const router = useRouter();
+    const { showToast } = useToast();
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,7 +125,7 @@ export default function NewAppointmentPage() {
             }
 
             if (!clientId) {
-                alert('Selecione ou crie um cliente');
+                showToast('Selecione ou crie um cliente.', 'error');
                 setIsSubmitting(false);
                 return;
             }
@@ -137,17 +138,17 @@ export default function NewAppointmentPage() {
                 start_at: selectedSlot.start_at
             });
 
-            alert('Agendamento criado com sucesso!');
+            showToast('Agendamento criado com sucesso!', 'success');
             router.push('/dashboard/appointments');
         } catch (err) {
             const apiError = err as ApiError;
             
             if (apiError.status === 0) {
-                alert('O servi√ßo est√° fora do ar no momento. Contate o administrador.');
+                showToast('O serviÁo est· fora do ar no momento. Contate o administrador.', 'error');
             } else if (apiError.status === 409) {
-                alert('Este hor√°rio j√° est√° ocupado. Escolha outro hor√°rio.');
+                showToast('Este hor·rio j· est· ocupado. Escolha outro hor·rio.', 'error');
             } else {
-                alert(apiError.message || 'Erro ao criar agendamento. Tente novamente.');
+                showToast(apiError.message || 'Erro ao criar agendamento. Tente novamente.', 'error');
             }
         } finally {
             setIsSubmitting(false);
@@ -443,3 +444,4 @@ export default function NewAppointmentPage() {
         </div>
     );
 }
+

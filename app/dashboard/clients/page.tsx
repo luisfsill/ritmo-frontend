@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Mail, Phone, Loader2, Edit2 } from 'lucide-react';
-import { Button, Input, SearchInput, Modal, ModalFooter } from '@/components/ui';
+import { useCallback, useEffect, useState } from 'react';
+import { Edit2, Loader2, Mail, Phone, Plus, Trash2 } from 'lucide-react';
+import { Button, Input, Modal, ModalFooter, SearchInput, useConfirmDialog, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './clients.module.css';
 
@@ -22,11 +22,25 @@ interface Client {
     phone: string | null;
 }
 
+interface ClientQueryResponse {
+    items: Client[];
+    next_cursor: string | null;
+    total: number;
+}
+
+const PAGE_SIZE = 30;
+
 export default function ClientsPage() {
+    const { showToast } = useToast();
+    const { confirm: confirmDialog } = useConfirmDialog();
     const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
     const [showModal, setShowModal] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [saving, setSaving] = useState(false);
@@ -37,51 +51,69 @@ export default function ClientsPage() {
     });
 
     useEffect(() => {
-        loadClients();
-    }, []);
+        const timeout = window.setTimeout(() => {
+            setDebouncedQuery(searchQuery.trim());
+        }, 300);
+        return () => window.clearTimeout(timeout);
+    }, [searchQuery]);
 
-    const loadClients = async () => {
-        setIsLoading(true);
+    const loadClients = useCallback(async (reset: boolean, cursor: string | null, query: string) => {
+        if (reset) {
+            setIsLoading(true);
+        } else {
+            if (!cursor) return;
+            setIsLoadingMore(true);
+        }
         setError(null);
+
         try {
-            const data = await api.get<Client[]>('/api/v1/clients');
-            setClients(data);
-            setError(null);
+            const params = new URLSearchParams();
+            params.set('limit', String(PAGE_SIZE));
+            if (query) params.set('q', query);
+            if (!reset && cursor) params.set('cursor', cursor);
+            const endpoint = `/api/v1/clients/query?${params.toString()}`;
+            const data = await api.get<ClientQueryResponse>(endpoint);
+
+            setClients((previous) => {
+                if (reset) return data.items;
+                const known = new Set(previous.map((item) => item.id));
+                const additions = data.items.filter((item) => !known.has(item.id));
+                return [...previous, ...additions];
+            });
+            setNextCursor(data.next_cursor);
+            setTotalCount(data.total || 0);
         } catch (err) {
             const apiError = err as ApiError;
-            
-            if (apiError.status === 0) {
-                setError('O serviço está fora do ar no momento. Contate o administrador.');
-            } else {
-                setError(apiError.message || 'Erro ao carregar clientes. Tente novamente.');
-            }
+            setError(apiError.message || 'Erro ao carregar clientes. Tente novamente.');
         } finally {
             setIsLoading(false);
+            setIsLoadingMore(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        void loadClients(true, null, debouncedQuery);
+    }, [debouncedQuery, loadClients]);
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Tem certeza que deseja excluir este cliente? Esta ação é irreversível.')) return;
+        const confirmed = await confirmDialog({
+            title: 'Excluir cliente',
+            message: 'Tem certeza que deseja excluir este cliente? Esta ação é irreversível.',
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
         try {
             await api.delete(`/api/v1/clients/${id}`, { confirm: true });
-            setClients(clients.filter(c => c.id !== id));
+            showToast('Cliente excluído com sucesso.', 'success');
+            await loadClients(true, null, debouncedQuery);
         } catch (err) {
             const apiError = err as ApiError;
-            
-            if (apiError.status === 0) {
-                alert('O serviço está fora do ar no momento. Contate o administrador.');
-            } else {
-                alert(apiError.message || 'Erro ao excluir cliente. Tente novamente.');
-            }
+            showToast(apiError.message || 'Erro ao excluir cliente. Tente novamente.', 'error');
         }
     };
-
-    const filteredClients = clients.filter(client =>
-        client.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (client.phone ?? '').includes(searchQuery) ||
-        (client.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (client.whatsapp_handle ?? '').includes(searchQuery)
-    );
 
     const resetForm = () => {
         setFormData({
@@ -115,7 +147,7 @@ export default function ClientsPage() {
 
     const handleSave = async () => {
         if (!formData.full_name.trim()) {
-            alert('O nome do cliente é obrigatório');
+            showToast('O nome do cliente é obrigatório.', 'error');
             return;
         }
 
@@ -128,21 +160,24 @@ export default function ClientsPage() {
             };
 
             if (editingClient) {
-                const updated = await api.patch<Client>(`/api/v1/clients/${editingClient.id}`, payload);
-                setClients(clients.map(c => c.id === editingClient.id ? updated : c));
+                await api.patch<Client>(`/api/v1/clients/${editingClient.id}`, payload);
+                showToast('Cliente atualizado com sucesso.', 'success');
             } else {
-                const created = await api.post<Client>('/api/v1/clients', payload);
-                setClients([...clients, created]);
+                await api.post<Client>('/api/v1/clients', payload);
+                showToast('Cliente criado com sucesso.', 'success');
             }
 
             closeModal();
+            await loadClients(true, null, debouncedQuery);
         } catch (err) {
             const apiError = err as ApiError;
-            alert(apiError.message || 'Erro ao salvar cliente. Tente novamente.');
+            showToast(apiError.message || 'Erro ao salvar cliente. Tente novamente.', 'error');
         } finally {
             setSaving(false);
         }
     };
+
+    const hasNoResults = !isLoading && !error && clients.length === 0;
 
     return (
         <div className={styles.page}>
@@ -160,10 +195,10 @@ export default function ClientsPage() {
                 <SearchInput
                     value={searchQuery}
                     onChange={setSearchQuery}
-                    placeholder="Buscar por nome, telefone ou email..."
+                    placeholder="Buscar por nome, telefone, e-mail ou WhatsApp..."
                 />
                 <div className={styles.count}>
-                    {filteredClients.length} cliente{filteredClients.length !== 1 ? 's' : ''}
+                    {clients.length} de {totalCount} cliente{totalCount !== 1 ? 's' : ''}
                 </div>
             </div>
 
@@ -175,67 +210,149 @@ export default function ClientsPage() {
             ) : error ? (
                 <div className={styles.errorState}>
                     <p>{error}</p>
-                    <Button variant="secondary" onClick={loadClients}>Tentar novamente</Button>
+                    <Button variant="secondary" onClick={() => void loadClients(true, null, debouncedQuery)}>
+                        Tentar novamente
+                    </Button>
                 </div>
-            ) : filteredClients.length === 0 ? (
+            ) : hasNoResults ? (
                 <div className={styles.emptyState}>
                     <div className={styles.emptyIcon}>📋</div>
                     <h3>Nenhum cliente encontrado</h3>
-                    <p>{searchQuery ? 'Tente uma busca diferente' : 'Clientes serão adicionados automaticamente ao agendar'}</p>
+                    <p>{debouncedQuery ? 'Tente uma busca diferente' : 'Clientes serão adicionados automaticamente ao agendar'}</p>
+                    {!debouncedQuery && (
+                        <Button onClick={openCreateModal}>
+                            <Plus size={18} />
+                            Adicionar cliente
+                        </Button>
+                    )}
                 </div>
             ) : (
-                <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Contato</th>
-                                <th>Status</th>
-                                <th>Tags</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredClients.map((client) => (
-                                <tr key={client.id}>
-                                    <td>
-                                        <div className={styles.clientName}>
-                                            <div className={styles.avatar}>{client.full_name.charAt(0).toUpperCase()}</div>
-                                            <span>{client.full_name}</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className={styles.contact}>
-                                            {client.phone && <div><Phone size={14} /> {client.phone}</div>}
-                                            {client.email && <div><Mail size={14} /> {client.email}</div>}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={styles.badge}>{client.status}</span>
-                                    </td>
-                                    <td>
-                                        {(client.tags ?? []).join(', ') || '-'}
-                                    </td>
-                                    <td>
-                                        <div className={styles.actions}>
-                                            <button className={styles.actionButton} onClick={() => openEditModal(client)} title="Editar"><Edit2 size={16} /></button>
-                                            <button className={`${styles.actionButton} ${styles.danger}`} onClick={() => handleDelete(client.id)} title="Excluir"><Trash2 size={16} /></button>
-                                        </div>
-                                    </td>
+                <>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Contato</th>
+                                    <th>Status</th>
+                                    <th>Tags</th>
+                                    <th></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {clients.map((client) => (
+                                    <tr key={client.id}>
+                                        <td>
+                                            <div className={styles.clientName}>
+                                                <div className={styles.avatar}>{client.full_name.charAt(0).toUpperCase()}</div>
+                                                <span>{client.full_name}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={styles.contact}>
+                                                {client.phone && (
+                                                    <div>
+                                                        <Phone size={14} /> {client.phone}
+                                                    </div>
+                                                )}
+                                                {client.email && (
+                                                    <div>
+                                                        <Mail size={14} /> {client.email}
+                                                    </div>
+                                                )}
+                                                {client.whatsapp_handle && (
+                                                    <div>WhatsApp: {client.whatsapp_handle}</div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className={styles.badge}>{client.status}</span>
+                                        </td>
+                                        <td>{(client.tags ?? []).join(', ') || '-'}</td>
+                                        <td>
+                                            <div className={styles.actions}>
+                                                <button
+                                                    className={styles.actionButton}
+                                                    onClick={() => openEditModal(client)}
+                                                    title="Editar"
+                                                    aria-label={`Editar ${client.full_name}`}
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    className={`${styles.actionButton} ${styles.danger}`}
+                                                    onClick={() => void handleDelete(client.id)}
+                                                    title="Excluir"
+                                                    aria-label={`Excluir ${client.full_name}`}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className={styles.mobileList}>
+                        {clients.map((client) => (
+                            <article key={client.id} className={styles.mobileCard}>
+                                <div className={styles.mobileHeader}>
+                                    <div className={styles.clientName}>
+                                        <div className={styles.avatar}>{client.full_name.charAt(0).toUpperCase()}</div>
+                                        <span>{client.full_name}</span>
+                                    </div>
+                                    <span className={styles.badge}>{client.status}</span>
+                                </div>
+                                <div className={styles.contact}>
+                                    {client.phone && (
+                                        <div>
+                                            <Phone size={14} /> {client.phone}
+                                        </div>
+                                    )}
+                                    {client.email && (
+                                        <div>
+                                            <Mail size={14} /> {client.email}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={styles.mobileMeta}>Tags: {(client.tags ?? []).join(', ') || '-'}</div>
+                                <div className={styles.actions}>
+                                    <button
+                                        className={styles.actionButton}
+                                        onClick={() => openEditModal(client)}
+                                        aria-label={`Editar ${client.full_name}`}
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        className={`${styles.actionButton} ${styles.danger}`}
+                                        onClick={() => void handleDelete(client.id)}
+                                        aria-label={`Excluir ${client.full_name}`}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+
+                    {nextCursor && (
+                        <div className={styles.loadMore}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => void loadClients(false, nextCursor, debouncedQuery)}
+                                isLoading={isLoadingMore}
+                            >
+                                Carregar mais
+                            </Button>
+                        </div>
+                    )}
+                </>
             )}
 
-            {/* Modal de Criar/Editar Cliente */}
-            <Modal
-                isOpen={showModal}
-                onClose={closeModal}
-                title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
-                size="sm"
-            >
+            <Modal isOpen={showModal} onClose={closeModal} title={editingClient ? 'Editar Cliente' : 'Novo Cliente'} size="sm">
                 <div className={styles.form}>
                     <div className={styles.formGroup}>
                         <label className={styles.formLabel}>Nome completo *</label>
@@ -277,8 +394,10 @@ export default function ClientsPage() {
                                 <Loader2 size={16} className={styles.spinner} />
                                 Salvando...
                             </>
+                        ) : editingClient ? (
+                            'Salvar'
                         ) : (
-                            editingClient ? 'Salvar' : 'Criar Cliente'
+                            'Criar Cliente'
                         )}
                     </Button>
                 </ModalFooter>
