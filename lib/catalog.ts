@@ -8,7 +8,7 @@ export interface CatalogTenant {
 
 export interface CatalogSettings {
   timezone: string;
-  cancellation_policy: string | null;
+  cancellation_policy: Record<string, unknown>;
 }
 
 export interface CatalogService {
