@@ -36,6 +36,9 @@ function humanizeUazapiError(message: string): string {
   if (message.includes('uazapi_token_missing')) {
     return 'Nenhuma instância ativa foi encontrada para este número. Crie uma nova instância para continuar.';
   }
+  if (message.includes('uazapi_delete_not_confirmed')) {
+    return 'A UAZAPI nao confirmou a exclusao da instancia. Tente novamente em alguns segundos.';
+  }
   if (message.includes('capability_disabled')) {
     return 'Integração temporariamente indisponível. Tente novamente em alguns instantes.';
   }
@@ -50,6 +53,16 @@ function humanizeUazapiError(message: string): string {
   return message;
 }
 
+function isMaxInstancesError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    message.includes('429') ||
+    message.includes('max_instances') ||
+    lower.includes('maximum') ||
+    lower.includes('limit')
+  );
+}
+
 function userFacingActionForBlocker(blocker: string): string | null {
   switch (blocker) {
     case 'provider_not_uazapi':
@@ -59,7 +72,7 @@ function userFacingActionForBlocker(blocker: string): string | null {
     case 'webhook_not_registered':
     case 'missing_webhook_url':
     case 'webhook_url_localhost':
-      return 'Conclua os pré-requisitos e reconecte para concluir a configuração automática de recebimento de mensagens.';
+      return 'Clique em "Registrar Webhook" para concluir a configuração de recebimento de mensagens.';
     case 'missing_webhook_secret_prod':
       return 'Peça ao suporte para concluir a configuração de segurança da integração.';
     case 'agent_worker_disabled':
@@ -99,7 +112,7 @@ function buildIntegrationWarning(
 }
 
 export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [state, setState] = useState<ConnectionState>('loading');
   const [instance, setInstance] = useState<UazapiInstance | null>(null);
   const [statusData, setStatusData] = useState<UazapiStatus | null>(null);
@@ -112,7 +125,8 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   const statusPollingInFlight = useRef(false);
 
-  const tenantId = user?.tenant_id || 'demo-tenant';
+  const tenantId = user?.tenant_id?.trim() || null;
+  const canCreateInstance = Boolean(tenantId) && !isAuthLoading;
   const businessName = user?.business_name || user?.name || 'Meu Negócio';
 
   const generateSlug = (name: string): string => {
@@ -280,15 +294,19 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             return;
           }
 
+          setPendingCommand(null);
           const status = statusResult.data.status;
           applyStatus(status);
-          if (status?.status?.connected && status?.status?.loggedIn) {
+          const connected = Boolean(status?.status?.connected) && Boolean(status?.status?.loggedIn);
+          if (connected) {
             try {
               const integrationStatus = await uazapi.getIntegrationStatus();
               setIntegrationWarning(buildIntegrationWarning(true, integrationStatus));
             } catch {
               // Keep polling status even if integration endpoint is temporarily unavailable.
             }
+          } else {
+            setIntegrationWarning(null);
           }
         } catch (err) {
           console.error('Erro no polling de status do WhatsApp:', err);
@@ -313,6 +331,11 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   };
 
   const handleCreateInstance = async () => {
+    if (!tenantId) {
+      setError('Nao foi possivel identificar sua conta agora. Aguarde alguns segundos e tente novamente.');
+      return;
+    }
+
     setActionLoading('create');
     setError(null);
 
@@ -370,6 +393,60 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       setTimeout(() => {
         void loadInstanceStatus();
       }, 1000);
+    } catch (err) {
+      const message = normalizeError(err);
+
+      // User-first fallback: when provider refuses new sessions by quota,
+      // try finishing webhook setup on the existing instance.
+      if (isMaxInstancesError(message)) {
+        try {
+          const webhookResult = await uazapi.setWebhook({
+            enabled: true,
+            events: ['messages', 'messages_update', 'connection'],
+          });
+
+          if (webhookResult.kind === 'pending') {
+            const committed = await waitPendingCommand(webhookResult.pending);
+            if (committed) {
+              await loadInstanceStatus();
+              return;
+            }
+          } else {
+            setIntegrationWarning(null);
+            await loadInstanceStatus();
+            return;
+          }
+        } catch {
+          // Fall through to the original error message below.
+        }
+      }
+
+      setError(humanizeUazapiError(message));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRegisterWebhook = async () => {
+    setActionLoading('webhook');
+    setError(null);
+
+    try {
+      const result = await uazapi.setWebhook({
+        enabled: true,
+        events: ['messages', 'messages_update', 'connection'],
+      });
+
+      if (result.kind === 'pending') {
+        const committed = await waitPendingCommand(result.pending);
+        if (committed) {
+          await loadInstanceStatus();
+        }
+        return;
+      }
+
+      setIntegrationWarning(null);
+      await loadInstanceStatus();
     } catch (err) {
       setError(humanizeUazapiError(normalizeError(err)));
     } finally {
@@ -475,7 +552,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           <button
             className={`${styles.actionButton} ${styles.connectButton}`}
             onClick={handleCreateInstance}
-            disabled={actionLoading === 'create'}
+            disabled={actionLoading === 'create' || !canCreateInstance}
           >
             {actionLoading === 'create' ? (
               <Loader2 size={18} className={styles.spinner} />
@@ -591,6 +668,13 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
 
           {state === 'connected' && (
             <>
+              {integrationWarning && (
+                <button className={`${styles.actionButton} ${styles.connectButton}`} onClick={handleRegisterWebhook} disabled={!!actionLoading}>
+                  {actionLoading === 'webhook' ? <Loader2 size={18} className={styles.spinner} /> : <MessageCircle size={18} />}
+                  Registrar Webhook
+                </button>
+              )}
+
               <button className={`${styles.actionButton} ${styles.testButton}`} onClick={handleTestConnection} disabled={!!actionLoading}>
                 {actionLoading === 'test' ? <Loader2 size={18} className={styles.spinner} /> : <Check size={18} />}
                 Testar Conexao
