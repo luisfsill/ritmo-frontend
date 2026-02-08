@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { X, MessageCircle, Loader2, RefreshCw, Smartphone, AlertCircle, Check, Unplug, Trash2, Clock3 } from 'lucide-react';
 import { toDataURL } from 'qrcode/lib/browser';
-import { uazapi, WhatsAppStorage, UazapiInstance, UazapiIntegrationStatus, UazapiStatus } from '@/lib/uazapi';
+import { uazapi, UazapiInstance, UazapiIntegrationStatus, UazapiStatus } from '@/lib/uazapi';
 import { PendingCommandResponse, waitFrontCommand } from '@/lib/front-commands';
 import { useAuth } from '@/lib/auth-context';
 import styles from './WhatsAppModal.module.css';
@@ -31,13 +31,13 @@ function normalizeError(err: unknown): string {
 
 function humanizeUazapiError(message: string): string {
   if (message.includes('uazapi_webhook_secret_missing') || message.includes('missing_webhook_secret')) {
-    return 'Integração temporariamente indisponível: configuração de webhook pendente no backend.';
+    return 'A integração do WhatsApp está bloqueada até a configuração do recebimento de mensagens ser concluída.';
   }
   if (message.includes('uazapi_token_missing')) {
-    return 'Token da instância não encontrado. Crie uma nova instância ou tente novamente.';
+    return 'Nenhuma instância ativa foi encontrada para este número. Crie uma nova instância para continuar.';
   }
   if (message.includes('capability_disabled')) {
-    return 'Integração temporariamente indisponível. Tente novamente em instantes.';
+    return 'Integração temporariamente indisponível. Tente novamente em alguns instantes.';
   }
   if (
     message.includes('429') ||
@@ -45,43 +45,27 @@ function humanizeUazapiError(message: string): string {
     message.toLowerCase().includes('maximum') ||
     message.toLowerCase().includes('limit')
   ) {
-    return 'Limite de instâncias atingido no servidor WhatsApp. Contate o suporte para liberar mais instâncias.';
+    return 'Limite de instâncias atingido no servidor WhatsApp. Entre em contato com o suporte para liberar novas instâncias.';
   }
   return message;
 }
 
-function extractInstanceToken(payload: unknown): string | null {
-  if (!payload || typeof payload !== 'object') {
-    return null;
-  }
-
-  const extractFrom = (value: unknown): string | null => {
-    if (!value || typeof value !== 'object') {
+function userFacingActionForBlocker(blocker: string): string | null {
+  switch (blocker) {
+    case 'provider_not_uazapi':
+      return 'Confirme com o suporte se o canal oficial do WhatsApp está ativo para esta conta.';
+    case 'missing_uazapi_token':
+      return 'Crie uma nova instância e faça a conexão novamente.';
+    case 'missing_webhook_url':
+    case 'webhook_url_localhost':
+      return 'Peça ao suporte para finalizar a configuração de recebimento de mensagens.';
+    case 'missing_webhook_secret_prod':
+      return 'Peça ao suporte para concluir a configuração de segurança da integração.';
+    case 'agent_worker_disabled':
+      return 'As respostas automáticas estão desativadas no momento.';
+    default:
       return null;
-    }
-    const record = value as Record<string, unknown>;
-    for (const key of ['token', 'instance_token', 'instanceToken']) {
-      const raw = record[key];
-      if (typeof raw === 'string' && raw.trim()) {
-        return raw.trim();
-      }
-    }
-    return null;
-  };
-
-  const direct = extractFrom(payload);
-  if (direct) {
-    return direct;
   }
-
-  const record = payload as Record<string, unknown>;
-  const nested = extractFrom(record.instance);
-  if (nested) {
-    return nested;
-  }
-
-  const nestedInstance = record.instance && typeof record.instance === 'object' ? (record.instance as Record<string, unknown>).instance : null;
-  return extractFrom(nestedInstance);
 }
 
 function buildIntegrationWarning(
@@ -92,17 +76,17 @@ function buildIntegrationWarning(
     return null;
   }
 
-  const actions = (integrationStatus?.recommended_actions || []).filter((item) => item.trim().length > 0);
   const blockers = (integrationStatus?.blockers || []).filter((item) => item.trim().length > 0);
+  const actions = blockers
+    .map((item) => userFacingActionForBlocker(item))
+    .filter((item): item is string => Boolean(item && item.trim().length > 0));
   const details = webhookError ? `Detalhe: ${humanizeUazapiError(webhookError)}.` : null;
   const remediation =
     actions.length > 0
-      ? `Acoes recomendadas: ${actions.join(' ')}`
-      : blockers.length > 0
-        ? `Bloqueios atuais: ${blockers.join(', ')}`
-        : null;
+      ? `Ações recomendadas: ${actions.join(' ')}`
+      : null;
   const parts = [
-    'WhatsApp conectado, mas o webhook ainda nao esta pronto para mensagens de entrada.',
+    'WhatsApp conectado, mas o recebimento de mensagens ainda não está pronto.',
     details,
     remediation,
   ].filter(Boolean);
@@ -170,17 +154,13 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
 
   const loadInstanceStatus = useCallback(async () => {
     setError(null);
-
-    let hasTriedLegacyToken = false;
     let shouldRetry = true;
 
     while (shouldRetry) {
       shouldRetry = false;
 
       try {
-        const legacyToken = WhatsAppStorage.getToken();
-        const effectiveToken = instance?.token || legacyToken || undefined;
-        const statusResult = await uazapi.getStatus({ token: effectiveToken });
+        const statusResult = await uazapi.getStatus();
 
         if (statusResult.kind === 'pending') {
           const committed = await waitPendingCommand(statusResult.pending);
@@ -202,40 +182,12 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         return;
       } catch (err) {
         const message = normalizeError(err);
-
-        if (message.includes('uazapi_token_missing') && !hasTriedLegacyToken) {
-          hasTriedLegacyToken = true;
-          const legacyToken = WhatsAppStorage.getToken();
-
-          if (!legacyToken) {
-            setState('no-instance');
-            setInstance(null);
-            setStatusData(null);
-            setIntegrationWarning(null);
-            return;
-          }
-
-          try {
-            const adoptResult = await uazapi.adoptToken(legacyToken);
-
-            if (adoptResult.kind === 'pending') {
-              const adopted = await waitPendingCommand(adoptResult.pending);
-              if (adopted) {
-                WhatsAppStorage.clearToken();
-                shouldRetry = true;
-              }
-              continue;
-            }
-
-            WhatsAppStorage.clearToken();
-            shouldRetry = true;
-            continue;
-          } catch (adoptErr) {
-            setState('error');
-            setIntegrationWarning(null);
-            setError(humanizeUazapiError(normalizeError(adoptErr)));
-            return;
-          }
+        if (message.includes('uazapi_token_missing')) {
+          setState('no-instance');
+          setInstance(null);
+          setStatusData(null);
+          setIntegrationWarning(null);
+          return;
         }
 
         setState('error');
@@ -256,12 +208,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           const capabilities = await uazapi.getCapabilities();
           if (!capabilities.enabled) {
             const reason = capabilities.reason || 'capability_disabled';
-            if (reason === 'missing_webhook_secret') {
-              setBlockedReason(null);
-              setError(humanizeUazapiError('uazapi_webhook_secret_missing'));
-              await loadInstanceStatus();
-              return;
-            }
             setBlockedReason(reason);
             setState('error');
             setIntegrationWarning(null);
@@ -322,9 +268,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         }
         statusPollingInFlight.current = true;
         try {
-          const legacyToken = WhatsAppStorage.getToken();
-          const effectiveToken = instance?.token || legacyToken || undefined;
-          const statusResult = await uazapi.getStatus({ token: effectiveToken });
+          const statusResult = await uazapi.getStatus();
           if (statusResult.kind === 'pending') {
             setPendingCommand(statusResult.pending);
             return;
@@ -369,11 +313,6 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         return;
       }
 
-      const token = extractInstanceToken(result.data);
-      if (token) {
-        WhatsAppStorage.saveToken(token);
-      }
-
       await loadInstanceStatus();
     } catch (err) {
       setError(humanizeUazapiError(normalizeError(err)));
@@ -382,13 +321,20 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     }
   };
 
+  const applyDeletedState = useCallback(() => {
+    setInstance(null);
+    setStatusData(null);
+    setIntegrationWarning(null);
+    setState('no-instance');
+    setQrImageSrc(null);
+  }, []);
+
   const handleConnect = async () => {
     setActionLoading('connect');
     setError(null);
 
     try {
-      const legacyToken = WhatsAppStorage.getToken();
-      const result = await uazapi.connect({ token: legacyToken || undefined });
+      const result = await uazapi.connect();
 
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
@@ -421,9 +367,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const legacyToken = WhatsAppStorage.getToken();
-      const effectiveToken = instance?.token || legacyToken || undefined;
-      const result = await uazapi.disconnect({ token: effectiveToken });
+      const result = await uazapi.disconnect();
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
         if (committed) {
@@ -448,23 +392,16 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const legacyToken = WhatsAppStorage.getToken();
-      const effectiveToken = instance?.token || legacyToken || undefined;
-      const result = await uazapi.deleteInstance({ token: effectiveToken });
+      const result = await uazapi.deleteInstance();
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
         if (committed) {
-          await loadInstanceStatus();
+          applyDeletedState();
         }
         return;
       }
 
-      WhatsAppStorage.clearToken();
-      setInstance(null);
-      setStatusData(null);
-      setIntegrationWarning(null);
-      setState('no-instance');
-      setQrImageSrc(null);
+      applyDeletedState();
     } catch (err) {
       setError(humanizeUazapiError(normalizeError(err)));
     } finally {
@@ -477,9 +414,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const legacyToken = WhatsAppStorage.getToken();
-      const effectiveToken = instance?.token || legacyToken || undefined;
-      const result = await uazapi.getStatus({ token: effectiveToken });
+      const result = await uazapi.getStatus();
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
         if (!committed) {
@@ -518,8 +453,8 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       return (
         <div className={styles.noInstance}>
           <Smartphone size={48} />
-          <h3>Nenhuma instancia configurada</h3>
-          <p>Crie uma instancia do WhatsApp para comecar a enviar notificacoes automaticas.</p>
+          <h3>Nenhuma instância configurada</h3>
+          <p>Crie uma instância do WhatsApp para começar a enviar notificações automáticas.</p>
           <button
             className={`${styles.actionButton} ${styles.connectButton}`}
             onClick={handleCreateInstance}
@@ -530,7 +465,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
             ) : (
               <MessageCircle size={18} />
             )}
-            Criar Instancia
+            Criar Instância
           </button>
         </div>
       );
