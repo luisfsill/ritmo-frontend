@@ -36,6 +36,9 @@ function humanizeUazapiError(message: string): string {
   if (message.includes('uazapi_token_missing')) {
     return 'Nenhuma instância ativa foi encontrada para este número. Crie uma nova instância para continuar.';
   }
+  if (message.includes('uazapi_error:401') || message.toLowerCase().includes('invalid token')) {
+    return 'A instância do WhatsApp foi removida ou o token expirou. Crie uma nova instância para reconectar.';
+  }
   if (message.includes('uazapi_delete_not_confirmed')) {
     return 'A UAZAPI nao confirmou a exclusao da instancia. Tente novamente em alguns segundos.';
   }
@@ -497,7 +500,12 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
 
       applyDeletedState();
     } catch (err) {
-      setError(humanizeUazapiError(normalizeError(err)));
+      const message = normalizeError(err);
+      if (message.includes('uazapi_error:401') || message.toLowerCase().includes('invalid token')) {
+        applyDeletedState();
+      } else {
+        setError(humanizeUazapiError(message));
+      }
     } finally {
       setActionLoading(null);
     }

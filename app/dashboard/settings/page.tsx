@@ -150,7 +150,12 @@ export default function SettingsPage() {
                         }
                     }
                 } catch (err) {
-                    const message = err instanceof Error ? err.message : '';
+                    const message =
+                        (err && typeof err === 'object' && 'message' in err && typeof (err as { message?: unknown }).message === 'string'
+                            ? (err as { message: string }).message
+                            : err instanceof Error
+                                ? err.message
+                                : '');
                     if (message.includes('uazapi_token_missing')) {
                         setWhatsappStatus('disconnected');
                         setWhatsappStatusHint(null);
