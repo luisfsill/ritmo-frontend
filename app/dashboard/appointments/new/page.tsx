@@ -144,9 +144,9 @@ export default function NewAppointmentPage() {
             const apiError = err as ApiError;
             
             if (apiError.status === 0) {
-                showToast('O serviÁo est· fora do ar no momento. Contate o administrador.', 'error');
+                showToast('O servi√ßo est√° fora do ar no momento. Contate o administrador.', 'error');
             } else if (apiError.status === 409) {
-                showToast('Este hor·rio j· est· ocupado. Escolha outro hor·rio.', 'error');
+                showToast('Este hor√°rio j√° est√° ocupado. Escolha outro hor√°rio.', 'error');
             } else {
                 showToast(apiError.message || 'Erro ao criar agendamento. Tente novamente.', 'error');
             }

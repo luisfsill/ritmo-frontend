@@ -172,11 +172,11 @@ export default function CalendarPage() {
 
     const handleSave = async () => {
         if (!formData.client_name.trim() || !formData.client_phone.trim()) {
-            showToast('Nome e telefone do cliente s„o obrigatÛrios.', 'error');
+            showToast('Nome e telefone do cliente s√£o obrigat√≥rios.', 'error');
             return;
         }
         if (!formData.service_id || !formData.staff_id) {
-            showToast('Selecione o serviÁo e o profissional.', 'error');
+            showToast('Selecione o servi√ßo e o profissional.', 'error');
             return;
         }
 
@@ -201,9 +201,9 @@ export default function CalendarPage() {
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.status === 0) {
-                showToast('O serviÁo est· fora do ar no momento. Contate o administrador.', 'error');
+                showToast('O servi√ßo est√° fora do ar no momento. Contate o administrador.', 'error');
             } else if (apiError.status === 409) {
-                showToast('Este hor·rio j· est· ocupado. Escolha outro hor·rio.', 'error');
+                showToast('Este hor√°rio j√° est√° ocupado. Escolha outro hor√°rio.', 'error');
             } else {
                 showToast(apiError.message || 'Erro ao criar agendamento. Tente novamente.', 'error');
             }
