@@ -124,6 +124,20 @@
     text-overflow: ellipsis;
 }
 
+.navBadge {
+    margin-left: auto;
+    min-width: 20px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    background: var(--color-error);
+    color: #fff;
+    font-size: 11px;
+    font-weight: var(--font-semibold);
+    line-height: 20px;
+    text-align: center;
+    padding: 0 6px;
+}
+
 .sidebarFooter {
     padding: var(--space-4) var(--space-2);
     border-top: 1px solid var(--color-border-subtle);

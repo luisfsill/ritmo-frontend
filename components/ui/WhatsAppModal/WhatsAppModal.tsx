@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { X, MessageCircle, Loader2, RefreshCw, Smartphone, AlertCircle, Check, Unplug, Trash2, Clock3 } from 'lucide-react';
-import { toDataURL } from 'qrcode/lib/browser';
 import { uazapi, UazapiInstance, UazapiIntegrationStatus, UazapiStatus } from '@/lib/uazapi';
 import { PendingCommandResponse, waitFrontCommand } from '@/lib/front-commands';
 import { useAuth } from '@/lib/auth-context';
@@ -263,16 +262,10 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         return;
       }
 
-      try {
-        const image = await toDataURL(qrRaw, { margin: 1, width: 280 });
-        if (!isCancelled) {
-          setQrImageSrc(image);
-        }
-      } catch {
-        if (!isCancelled) {
-          setQrImageSrc(null);
-          setError('Nao foi possivel renderizar o QR code retornado pela UAZAPI.');
-        }
+      const encoded = encodeURIComponent(qrRaw);
+      const image = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encoded}`;
+      if (!isCancelled) {
+        setQrImageSrc(image);
       }
     };
 
