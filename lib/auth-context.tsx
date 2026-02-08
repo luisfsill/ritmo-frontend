@@ -9,6 +9,8 @@ interface User {
     name: string;
     tenant_id: string;
     business_name?: string;
+    role?: string;
+    staff_id?: string | null;
 }
 
 interface MeResponse {
@@ -38,7 +40,17 @@ interface AuthProviderProps {
 }
 
 // Helper para extrair dados do JWT
-const parseJwt = (token: string): { sub: string; tenant_id: string; email?: string; name?: string; full_name?: string; business_name?: string } | null => {
+const parseJwt = (token: string): {
+    sub: string;
+    tenant_id: string;
+    email?: string;
+    name?: string;
+    full_name?: string;
+    business_name?: string;
+    role?: string;
+    staff_id?: string;
+    staffId?: string;
+} | null => {
     try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -69,6 +81,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 name: response.full_name || response.email.split('@')[0],
                 tenant_id: response.tenant_id,
                 business_name: response.business_name,
+                role: response.role,
+                staff_id: null,
             };
         } catch {
             return null;
@@ -92,6 +106,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             name: userName,
             tenant_id: payload.tenant_id,
             business_name: payload.business_name,
+            role: payload.role,
+            staff_id: payload.staff_id || payload.staffId || null,
         };
     };
 
@@ -127,6 +143,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                             name: 'Admin',
                             tenant_id: 'demo-tenant',
                             business_name: 'Meu Negócio Demo',
+                            role: 'owner',
+                            staff_id: null,
                         });
                     }
                 }

@@ -205,7 +205,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       shouldRetry = false;
 
       try {
-        const statusResult = await uazapi.getStatus();
+        const legacyToken = WhatsAppStorage.getToken();
+        const effectiveToken = instance?.token || legacyToken || undefined;
+        const statusResult = await uazapi.getStatus({ token: effectiveToken });
 
         if (statusResult.kind === 'pending') {
           const committed = await waitPendingCommand(statusResult.pending);
@@ -349,7 +351,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         }
         statusPollingInFlight.current = true;
         try {
-          const statusResult = await uazapi.getStatus();
+          const legacyToken = WhatsAppStorage.getToken();
+          const effectiveToken = instance?.token || legacyToken || undefined;
+          const statusResult = await uazapi.getStatus({ token: effectiveToken });
           if (statusResult.kind === 'pending') {
             setPendingCommand(statusResult.pending);
             return;
@@ -456,7 +460,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const result = await uazapi.disconnect();
+      const legacyToken = WhatsAppStorage.getToken();
+      const effectiveToken = instance?.token || legacyToken || undefined;
+      const result = await uazapi.disconnect({ token: effectiveToken });
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
         if (committed) {
@@ -481,7 +487,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const result = await uazapi.deleteInstance();
+      const legacyToken = WhatsAppStorage.getToken();
+      const effectiveToken = instance?.token || legacyToken || undefined;
+      const result = await uazapi.deleteInstance({ token: effectiveToken });
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
         if (committed) {
@@ -507,7 +515,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     setError(null);
 
     try {
-      const result = await uazapi.getStatus();
+      const legacyToken = WhatsAppStorage.getToken();
+      const effectiveToken = instance?.token || legacyToken || undefined;
+      const result = await uazapi.getStatus({ token: effectiveToken });
       if (result.kind === 'pending') {
         const committed = await waitPendingCommand(result.pending);
         if (!committed) {

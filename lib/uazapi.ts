@@ -115,6 +115,11 @@ export interface UazapiCapabilitiesData {
   reason?: 'missing_webhook_secret' | 'ok' | string;
 }
 
+interface UazapiRequestOptions {
+  token?: string;
+  baseUrl?: string;
+}
+
 function asOperationResult<T>(payload: T | PendingCommandResponse): UazapiResult<T> {
   if (isPendingResponse(payload)) {
     return { kind: 'pending', pending: payload };
@@ -149,8 +154,17 @@ class UazapiClient {
     return asOperationResult(payload);
   }
 
-  async getStatus(): Promise<UazapiResult<UazapiStatusData>> {
-    const payload = await api.get<UazapiStatusData | PendingCommandResponse>('/api/v1/uazapi/instance/status');
+  async getStatus(options?: UazapiRequestOptions): Promise<UazapiResult<UazapiStatusData>> {
+    const query = new URLSearchParams();
+    if (options?.token) {
+      query.set('token', options.token);
+    }
+    if (options?.baseUrl) {
+      query.set('base_url', options.baseUrl);
+    }
+    const qs = query.toString();
+    const url = qs ? `/api/v1/uazapi/instance/status?${qs}` : '/api/v1/uazapi/instance/status';
+    const payload = await api.get<UazapiStatusData | PendingCommandResponse>(url);
     return asOperationResult(payload);
   }
 
@@ -159,13 +173,19 @@ class UazapiClient {
     return asOperationResult(payload);
   }
 
-  async disconnect(): Promise<UazapiResult<UazapiDisconnectData>> {
-    const payload = await api.post<UazapiDisconnectData | PendingCommandResponse>('/api/v1/uazapi/instance/disconnect', {});
+  async disconnect(options?: UazapiRequestOptions): Promise<UazapiResult<UazapiDisconnectData>> {
+    const payload = await api.post<UazapiDisconnectData | PendingCommandResponse>('/api/v1/uazapi/instance/disconnect', {
+      ...(options?.token ? { token: options.token } : {}),
+      ...(options?.baseUrl ? { base_url: options.baseUrl } : {}),
+    });
     return asOperationResult(payload);
   }
 
-  async deleteInstance(): Promise<UazapiResult<UazapiDeleteData>> {
-    const payload = await api.delete<UazapiDeleteData | PendingCommandResponse>('/api/v1/uazapi/instance', {});
+  async deleteInstance(options?: UazapiRequestOptions): Promise<UazapiResult<UazapiDeleteData>> {
+    const payload = await api.delete<UazapiDeleteData | PendingCommandResponse>('/api/v1/uazapi/instance', {
+      ...(options?.token ? { token: options.token } : {}),
+      ...(options?.baseUrl ? { base_url: options.baseUrl } : {}),
+    });
     return asOperationResult(payload);
   }
 

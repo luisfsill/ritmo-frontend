@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes that don't require authentication
-const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/terms', '/privacy', '/privacy-policy', '/terms-of-service', '/demo'];
+const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/terms', '/privacy', '/privacy-policy', '/terms-of-service', '/demo', '/manifest.json'];
 
 // Routes that should redirect to dashboard if already authenticated
 const authRoutes = ['/login', '/register', '/forgot-password'];
@@ -11,7 +11,7 @@ const authRoutes = ['/login', '/register', '/forgot-password'];
 const adminRoutes = ['/admin'];
 
 // System routes that should never be treated as public booking slugs
-const systemRoutes = ['/dashboard', '/admin', '/api', '/_next', '/login', '/register', '/forgot-password', '/terms', '/privacy', '/privacy-policy', '/terms-of-service', '/demo', '/public'];
+const systemRoutes = ['/dashboard', '/admin', '/api', '/_next', '/login', '/register', '/forgot-password', '/terms', '/privacy', '/privacy-policy', '/terms-of-service', '/demo', '/public', '/manifest.json'];
 
 /**
  * Check if a pathname is a potential public booking slug

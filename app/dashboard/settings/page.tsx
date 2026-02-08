@@ -7,7 +7,7 @@ import { WhatsAppModal } from '@/components/ui/WhatsAppModal';
 import { useTheme } from '@/lib/theme-context';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
-import { uazapi } from '@/lib/uazapi';
+import { uazapi, WhatsAppStorage } from '@/lib/uazapi';
 import styles from './settings.module.css';
 
 type Tab = 'profile' | 'business' | 'notifications' | 'appearance' | 'integrations' | 'ai' | 'security';
@@ -134,7 +134,8 @@ export default function SettingsPage() {
                         }
                     } else {
                         setWhatsappStatusHint(null);
-                        const status = await uazapi.getStatus();
+                        const legacyToken = WhatsAppStorage.getToken();
+                        const status = await uazapi.getStatus({ token: legacyToken || undefined });
                         if (status.kind === 'pending') {
                             setWhatsappStatus('pending');
                         } else {
@@ -157,8 +158,12 @@ export default function SettingsPage() {
 
                 // Verifica status do Google Calendar
                 try {
-                    const calendarStatus = await api.get<GoogleCalendarStatus>('/api/v1/integrations/google-calendar/status');
-                    setGoogleCalendarStatus(calendarStatus);
+                    if (!user?.staff_id) {
+                        setGoogleCalendarStatus({ connected: false });
+                    } else {
+                        const calendarStatus = await api.get<GoogleCalendarStatus>('/api/v1/integrations/google-calendar/status');
+                        setGoogleCalendarStatus(calendarStatus);
+                    }
                 } catch {
                     setGoogleCalendarStatus({ connected: false });
                 }
@@ -191,8 +196,12 @@ export default function SettingsPage() {
         if (googleCallback === 'success') {
             void (async () => {
                 try {
-                    const calendarStatus = await api.get<GoogleCalendarStatus>('/api/v1/integrations/google-calendar/status');
-                    setGoogleCalendarStatus(calendarStatus);
+                    if (user?.staff_id) {
+                        const calendarStatus = await api.get<GoogleCalendarStatus>('/api/v1/integrations/google-calendar/status');
+                        setGoogleCalendarStatus(calendarStatus);
+                    } else {
+                        setGoogleCalendarStatus({ connected: false });
+                    }
                 } catch {
                     setGoogleCalendarStatus({ connected: true });
                 } finally {
