@@ -1,59 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Save, Loader2, Webhook, Server, Key, AlertCircle, CheckCircle } from 'lucide-react';
+import { getAdminUser, getPlatformSettings, updatePlatformSettings } from '@/lib/admin-api';
 import styles from './settings.module.css';
 
-interface GlobalSettings {
+interface GlobalSettingsForm {
   uazapi_url: string;
-  uazapi_admin_token: string;
+  uazapi_admin_token_masked: string | null;
   default_webhook_url: string;
   webhook_events: string[];
 }
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState<GlobalSettings>({
+  const [settings, setSettings] = useState<GlobalSettingsForm>({
     uazapi_url: '',
-    uazapi_admin_token: '',
+    uazapi_admin_token_masked: null,
     default_webhook_url: '',
-    webhook_events: ['messages', 'connection'],
+    webhook_events: ['messages', 'messages_update', 'connection'],
   });
+  const [newAdminToken, setNewAdminToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showToken, setShowToken] = useState(false);
 
+  const currentAdmin = getAdminUser();
+  const isSuperAdmin = String(currentAdmin?.role || '').toUpperCase() === 'SUPER_ADMIN';
+
   useEffect(() => {
-    // Carrega configurações atuais
-    // Em produção, isso viria de uma API ou banco de dados
-    setTimeout(() => {
-      setSettings({
-        uazapi_url: process.env.NEXT_PUBLIC_UAZAPI_URL || 'https://lfsystem.uazapi.com',
-        uazapi_admin_token: '***************************', // Mascarado por segurança
-        default_webhook_url: process.env.NEXT_PUBLIC_UAZAPI_WEBHOOK_URL || '',
-        webhook_events: ['messages', 'connection'],
-      });
-      setLoading(false);
-    }, 500);
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setMessage(null);
+      try {
+        const data = await getPlatformSettings();
+        if (!cancelled) {
+          setSettings({
+            uazapi_url: data.uazapi_url || '',
+            uazapi_admin_token_masked: data.uazapi_admin_token_masked,
+            default_webhook_url: data.default_webhook_url || '',
+            webhook_events: data.webhook_events || ['messages', 'messages_update', 'connection'],
+          });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setMessage({
+            type: 'error',
+            text: (err as Error).message || 'Erro ao carregar configurações.',
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSave = async () => {
+    if (!isSuperAdmin) return;
     setSaving(true);
     setMessage(null);
 
     try {
-      // Simula salvamento
-      // Em produção, isso salvaria em um banco de dados ou arquivo de configuração
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const payload: {
+        uazapi_url: string | null;
+        default_webhook_url: string | null;
+        webhook_events: string[];
+        uazapi_admin_token?: string | null;
+      } = {
+        uazapi_url: settings.uazapi_url.trim() || null,
+        default_webhook_url: settings.default_webhook_url.trim() || null,
+        webhook_events: settings.webhook_events,
+      };
+      if (newAdminToken.trim()) {
+        payload.uazapi_admin_token = newAdminToken.trim();
+      }
 
+      const updated = await updatePlatformSettings(payload);
+
+      setSettings({
+        uazapi_url: updated.uazapi_url || '',
+        uazapi_admin_token_masked: updated.uazapi_admin_token_masked,
+        default_webhook_url: updated.default_webhook_url || '',
+        webhook_events: updated.webhook_events || [],
+      });
+      setNewAdminToken('');
       setMessage({
         type: 'success',
-        text: 'Configurações salvas com sucesso! Reinicie o servidor para aplicar as mudanças.',
+        text: 'Configurações salvas com sucesso.',
       });
-    } catch {
+    } catch (err) {
       setMessage({
         type: 'error',
-        text: 'Erro ao salvar configurações. Tente novamente.',
+        text: (err as Error).message || 'Erro ao salvar configurações. Tente novamente.',
       });
     } finally {
       setSaving(false);
@@ -100,7 +145,6 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      {/* UAZAPI Configuration */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <Server size={24} />
@@ -119,8 +163,8 @@ export default function AdminSettingsPage() {
               value={settings.uazapi_url}
               onChange={(e) => setSettings({ ...settings, uazapi_url: e.target.value })}
               placeholder="https://seu-servidor.uazapi.com"
+              disabled={!isSuperAdmin}
             />
-            <span className={styles.hint}>Exemplo: https://lfsystem.uazapi.com</span>
           </div>
 
           <div className={styles.field}>
@@ -132,9 +176,10 @@ export default function AdminSettingsPage() {
               <input
                 type={showToken ? 'text' : 'password'}
                 className={styles.input}
-                value={settings.uazapi_admin_token}
-                onChange={(e) => setSettings({ ...settings, uazapi_admin_token: e.target.value })}
-                placeholder="Token de administrador"
+                value={newAdminToken}
+                onChange={(e) => setNewAdminToken(e.target.value)}
+                placeholder={settings.uazapi_admin_token_masked || 'Token não configurado'}
+                disabled={!isSuperAdmin}
               />
               <button
                 type="button"
@@ -145,13 +190,12 @@ export default function AdminSettingsPage() {
               </button>
             </div>
             <span className={styles.hint}>
-              Token de administrador para criar e gerenciar instâncias
+              O valor atual permanece mascarado. Preencha apenas se quiser substituir.
             </span>
           </div>
         </div>
       </section>
 
-      {/* Webhook Configuration */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <Webhook size={24} />
@@ -172,10 +216,8 @@ export default function AdminSettingsPage() {
               value={settings.default_webhook_url}
               onChange={(e) => setSettings({ ...settings, default_webhook_url: e.target.value })}
               placeholder="https://seu-backend.com/webhook/whatsapp"
+              disabled={!isSuperAdmin}
             />
-            <span className={styles.hint}>
-              Esta URL será configurada automaticamente para novas instâncias
-            </span>
           </div>
 
           <div className={styles.field}>
@@ -187,6 +229,7 @@ export default function AdminSettingsPage() {
                     type="checkbox"
                     checked={settings.webhook_events.includes(option.id)}
                     onChange={() => handleEventToggle(option.id)}
+                    disabled={!isSuperAdmin}
                   />
                   <div>
                     <span className={styles.checkboxLabel}>{option.label}</span>
@@ -199,26 +242,23 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
-      {/* Info Box */}
-      <div className={styles.infoBox}>
-        <AlertCircle size={20} />
-        <div>
-          <strong>Importante:</strong> Alterações nestas configurações afetam todo o sistema.
-          Após salvar, você precisará reiniciar o servidor para aplicar as mudanças nas variáveis de ambiente.
+      {!isSuperAdmin && (
+        <div className={styles.infoBox}>
+          <AlertCircle size={20} />
+          <div>
+            <strong>Permissão:</strong> apenas SUPER_ADMIN pode salvar configurações globais.
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Save Button */}
-      <div className={styles.actions}>
-        <button className={styles.saveButton} onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 size={18} className={styles.spinner} />
-          ) : (
-            <Save size={18} />
-          )}
-          {saving ? 'Salvando...' : 'Salvar Configurações'}
-        </button>
-      </div>
+      {isSuperAdmin && (
+        <div className={styles.actions}>
+          <button className={styles.saveButton} onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 size={18} className={styles.spinner} /> : <Save size={18} />}
+            {saving ? 'Salvando...' : 'Salvar Configurações'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

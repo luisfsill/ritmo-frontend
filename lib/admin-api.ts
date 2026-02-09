@@ -25,7 +25,24 @@ export interface PlatformUser {
     must_change_password: boolean;
     password_changed_at: string | null;
     last_login_at: string | null;
-    created_at: string;
+    created_at: string | null;
+    created_by_user_id?: string | null;
+}
+
+export interface PlatformSettings {
+    uazapi_url: string | null;
+    uazapi_admin_token_masked: string | null;
+    default_webhook_url: string | null;
+    webhook_events: string[];
+    updated_at: string | null;
+    updated_by_user_id: string | null;
+}
+
+export interface PlatformSettingsPatch {
+    uazapi_url?: string | null;
+    uazapi_admin_token?: string | null;
+    default_webhook_url?: string | null;
+    webhook_events?: string[];
 }
 
 export interface LoginResponse {
@@ -286,3 +303,11 @@ export const adminApi = {
     patch: <T>(endpoint: string, body?: unknown) => adminRequest<T>(endpoint, { method: 'PATCH', body }),
     delete: <T>(endpoint: string, body?: unknown) => adminRequest<T>(endpoint, { method: 'DELETE', body }),
 };
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+    return adminApi.get<PlatformSettings>('/api/v1/platform-settings/');
+}
+
+export async function updatePlatformSettings(payload: PlatformSettingsPatch): Promise<PlatformSettings> {
+    return adminApi.patch<PlatformSettings>('/api/v1/platform-settings/', payload);
+}

@@ -1,114 +1,133 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  Building2,
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  Loader2,
-  Save,
-  Trash2,
-  MessageSquare,
-  Users,
-  MapPin,
-  Globe,
-  FileText,
-  Bot,
-} from 'lucide-react';
+import { useEffect, useState, use } from 'react';
+import { ArrowLeft, Building2, User, Mail, Calendar, Loader2, Save, Bot, Activity } from 'lucide-react';
 import Link from 'next/link';
+import { adminApi, getAdminUser } from '@/lib/admin-api';
 import styles from './edit.module.css';
 
-interface Tenant {
+interface AdminTenant {
   id: string;
+  slug: string;
   business_name: string;
-  owner_name: string;
-  email: string;
-  phone: string;
-  document: string;
-  address: string;
-  city: string;
-  state: string;
-  website: string;
-  status: 'active' | 'inactive' | 'suspended' | 'trial';
-  plan: 'free' | 'basic' | 'pro' | 'enterprise';
-  whatsapp_connected: boolean;
-  users_count: number;
-  created_at: string;
-  notes: string;
+  owner_email: string | null;
+  owner_name: string | null;
+  status: string | null;
+  status_reason: string | null;
+  status_updated_at: string | null;
+  created_at: string | null;
+}
+
+interface AdminPlan {
+  code: string;
+  name: string;
+  is_active: boolean;
+}
+
+interface BillingUsage {
+  period_start: string;
+  period_end: string;
+  limits: Record<string, unknown>;
+  usage: Record<string, number>;
 }
 
 export default function EditTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [tenant, setTenant] = useState<AdminTenant | null>(null);
+  const [plans, setPlans] = useState<AdminPlan[]>([]);
+  const [usage, setUsage] = useState<BillingUsage | null>(null);
+  const [statusValue, setStatusValue] = useState<'ACTIVE' | 'SUSPENDED' | 'CLOSED'>('ACTIVE');
+  const [statusReason, setStatusReason] = useState('');
+  const [planCode, setPlanCode] = useState('');
+  const [planStatus, setPlanStatus] = useState('ACTIVE');
+  const [planReason, setPlanReason] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const currentAdmin = getAdminUser();
+  const canWrite = ['SUPER_ADMIN', 'ADMIN'].includes(String(currentAdmin?.role || '').toUpperCase());
+
   useEffect(() => {
-    // Simula carregamento do tenant
-    setTimeout(() => {
-      // Dados mockados - em produção viria da API
-      setTenant({
-        id: id,
-        business_name: 'Salão Bella Vista',
-        owner_name: 'Maria Silva',
-        email: 'maria@bellavista.com',
-        phone: '(11) 99999-9999',
-        document: '12.345.678/0001-90',
-        address: 'Rua das Flores, 123',
-        city: 'São Paulo',
-        state: 'SP',
-        website: 'www.bellavista.com.br',
-        status: 'active',
-        plan: 'pro',
-        whatsapp_connected: true,
-        users_count: 5,
-        created_at: '2024-01-15',
-        notes: 'Cliente desde janeiro. Migrado do plano básico em março.',
-      });
-      setLoading(false);
-    }, 500);
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setMessage(null);
+      try {
+        const [tenantData, usageData, plansData] = await Promise.all([
+          adminApi.get<AdminTenant>(`/api/v1/admin/tenants/${encodeURIComponent(id)}`),
+          adminApi.get<BillingUsage>(`/api/v1/admin/tenants/${encodeURIComponent(id)}/usage`),
+          adminApi.get<AdminPlan[]>('/api/v1/admin/plans'),
+        ]);
+        if (cancelled) return;
+        setTenant(tenantData);
+        setUsage(usageData);
+        const activePlans = (plansData || []).filter((p) => p.is_active);
+        setPlans(activePlans);
+        setStatusValue((String(tenantData.status || 'ACTIVE').toUpperCase() as 'ACTIVE' | 'SUSPENDED' | 'CLOSED'));
+        setPlanCode(activePlans[0]?.code || '');
+      } catch (err) {
+        if (!cancelled) {
+          setMessage({ type: 'error', text: (err as Error).message || 'Erro ao carregar tenant.' });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  const handleSave = async () => {
-    if (!tenant) return;
-    
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      // Simula salvamento
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setMessage({ type: 'success', text: 'Alterações salvas com sucesso!' });
-    } catch {
-      setMessage({ type: 'error', text: 'Erro ao salvar alterações.' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm('Tem certeza que deseja excluir esta empresa? Esta ação não pode ser desfeita.')) {
+  const handleSaveStatus = async () => {
+    if (!tenant || !canWrite) return;
+    if (statusReason.trim().length < 3) {
+      setMessage({ type: 'error', text: 'Informe um motivo com no mínimo 3 caracteres para alterar status.' });
       return;
     }
 
+    setSavingStatus(true);
+    setMessage(null);
     try {
-      // Simula exclusão
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      router.push('/admin/tenants');
-    } catch {
-      setMessage({ type: 'error', text: 'Erro ao excluir empresa.' });
+      await adminApi.patch(`/api/v1/admin/tenants/${encodeURIComponent(id)}/status`, {
+        status: statusValue,
+        reason: statusReason.trim(),
+      });
+      setTenant({ ...tenant, status: statusValue, status_reason: statusReason.trim(), status_updated_at: new Date().toISOString() });
+      setMessage({ type: 'success', text: 'Status atualizado com sucesso.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: (err as Error).message || 'Erro ao atualizar status.' });
+    } finally {
+      setSavingStatus(false);
     }
   };
 
-  const updateField = (field: keyof Tenant, value: string) => {
-    if (tenant) {
-      setTenant({ ...tenant, [field]: value });
+  const handleSavePlan = async () => {
+    if (!tenant || !canWrite) return;
+    if (!planCode) {
+      setMessage({ type: 'error', text: 'Selecione um plano.' });
+      return;
+    }
+    if (planReason.trim().length < 3) {
+      setMessage({ type: 'error', text: 'Informe um motivo com no mínimo 3 caracteres para alterar plano.' });
+      return;
+    }
+
+    setSavingPlan(true);
+    setMessage(null);
+    try {
+      await adminApi.post(`/api/v1/admin/tenants/${encodeURIComponent(id)}/subscription/set-plan`, {
+        plan_code: planCode,
+        status: planStatus,
+        reason: planReason.trim(),
+      });
+      setMessage({ type: 'success', text: 'Plano atualizado com sucesso.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: (err as Error).message || 'Erro ao atualizar plano.' });
+    } finally {
+      setSavingPlan(false);
     }
   };
 
@@ -129,51 +148,27 @@ export default function EditTenantPage({ params }: { params: Promise<{ id: strin
           Voltar
         </Link>
         <div className={styles.headerInfo}>
-          <h1 className={styles.title}>Editar Empresa</h1>
+          <h1 className={styles.title}>Gerenciar Empresa</h1>
           <p className={styles.subtitle}>ID: {tenant.id}</p>
-        </div>
-        <div className={styles.headerActions}>
-          <button className={styles.deleteButton} onClick={handleDelete}>
-            <Trash2 size={18} />
-            Excluir
-          </button>
-          <button className={styles.saveButton} onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 size={18} className={styles.spinner} /> : <Save size={18} />}
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
         </div>
       </div>
 
-      {message && (
-        <div className={`${styles.message} ${styles[message.type]}`}>
-          {message.text}
-        </div>
-      )}
+      {message && <div className={`${styles.message} ${styles[message.type]}`}>{message.text}</div>}
 
       <div className={styles.content}>
-        {/* Info Cards */}
         <div className={styles.infoCards}>
           <div className={styles.infoCard}>
-            <Users size={24} />
+            <Activity size={24} />
             <div>
-              <span className={styles.infoValue}>{tenant.users_count}</span>
-              <span className={styles.infoLabel}>Usuários</span>
-            </div>
-          </div>
-          <div className={styles.infoCard}>
-            <MessageSquare size={24} />
-            <div>
-              <span className={styles.infoValue}>
-                {tenant.whatsapp_connected ? 'Conectado' : 'Desconectado'}
-              </span>
-              <span className={styles.infoLabel}>WhatsApp</span>
+              <span className={styles.infoValue}>{tenant.status || 'N/D'}</span>
+              <span className={styles.infoLabel}>Status atual</span>
             </div>
           </div>
           <div className={styles.infoCard}>
             <Calendar size={24} />
             <div>
               <span className={styles.infoValue}>
-                {new Date(tenant.created_at).toLocaleDateString('pt-BR')}
+                {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString('pt-BR') : '-'}
               </span>
               <span className={styles.infoLabel}>Criado em</span>
             </div>
@@ -187,9 +182,7 @@ export default function EditTenantPage({ params }: { params: Promise<{ id: strin
           </Link>
         </div>
 
-        {/* Form Sections */}
         <div className={styles.formGrid}>
-          {/* Business Info */}
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
               <Building2 size={20} />
@@ -198,165 +191,137 @@ export default function EditTenantPage({ params }: { params: Promise<{ id: strin
             <div className={styles.form}>
               <div className={styles.field}>
                 <label className={styles.label}>Nome da Empresa</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={tenant.business_name}
-                  onChange={(e) => updateField('business_name', e.target.value)}
-                />
+                <input type="text" className={styles.input} value={tenant.business_name} readOnly disabled />
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>
-                  <FileText size={14} />
-                  CNPJ/CPF
-                </label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={tenant.document}
-                  onChange={(e) => updateField('document', e.target.value)}
-                />
+                <label className={styles.label}>Slug</label>
+                <input type="text" className={styles.input} value={tenant.slug} readOnly disabled />
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>
-                  <Globe size={14} />
-                  Website
-                </label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={tenant.website}
-                  onChange={(e) => updateField('website', e.target.value)}
-                />
+                <label className={styles.label}>Última razão de status</label>
+                <input type="text" className={styles.input} value={tenant.status_reason || '-'} readOnly disabled />
               </div>
             </div>
           </section>
 
-          {/* Owner Info */}
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
               <User size={20} />
-              Dados do Proprietário
+              Owner
             </h2>
             <div className={styles.form}>
               <div className={styles.field}>
-                <label className={styles.label}>Nome do Proprietário</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={tenant.owner_name}
-                  onChange={(e) => updateField('owner_name', e.target.value)}
-                />
+                <label className={styles.label}>Nome</label>
+                <input type="text" className={styles.input} value={tenant.owner_name || '-'} readOnly disabled />
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>
                   <Mail size={14} />
                   Email
                 </label>
-                <input
-                  type="email"
-                  className={styles.input}
-                  value={tenant.email}
-                  onChange={(e) => updateField('email', e.target.value)}
-                />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>
-                  <Phone size={14} />
-                  Telefone
-                </label>
-                <input
-                  type="tel"
-                  className={styles.input}
-                  value={tenant.phone}
-                  onChange={(e) => updateField('phone', e.target.value)}
-                />
+                <input type="text" className={styles.input} value={tenant.owner_email || '-'} readOnly disabled />
               </div>
             </div>
           </section>
 
-          {/* Address */}
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
-              <MapPin size={20} />
-              Endereço
+              <Activity size={20} />
+              Atualizar Status
             </h2>
             <div className={styles.form}>
               <div className={styles.field}>
-                <label className={styles.label}>Endereço</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={tenant.address}
-                  onChange={(e) => updateField('address', e.target.value)}
+                <label className={styles.label}>Status</label>
+                <select
+                  className={styles.select}
+                  value={statusValue}
+                  onChange={(e) => setStatusValue(e.target.value as 'ACTIVE' | 'SUSPENDED' | 'CLOSED')}
+                  disabled={!canWrite}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Motivo</label>
+                <textarea
+                  className={styles.textarea}
+                  rows={3}
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="Informe o motivo da alteração"
+                  disabled={!canWrite}
                 />
               </div>
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label className={styles.label}>Cidade</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={tenant.city}
-                    onChange={(e) => updateField('city', e.target.value)}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Estado</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={tenant.state}
-                    onChange={(e) => updateField('state', e.target.value)}
-                  />
-                </div>
-              </div>
+              {canWrite && (
+                <button className={styles.saveButton} onClick={handleSaveStatus} disabled={savingStatus}>
+                  {savingStatus ? <Loader2 size={18} className={styles.spinner} /> : <Save size={18} />}
+                  {savingStatus ? 'Salvando...' : 'Salvar Status'}
+                </button>
+              )}
             </div>
           </section>
 
-          {/* Status & Plan */}
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
               <Calendar size={20} />
-              Status e Plano
+              Plano e Uso
             </h2>
             <div className={styles.form}>
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label className={styles.label}>Status</label>
-                  <select
-                    className={styles.select}
-                    value={tenant.status}
-                    onChange={(e) => updateField('status', e.target.value)}
-                  >
-                    <option value="active">Ativo</option>
-                    <option value="inactive">Inativo</option>
-                    <option value="suspended">Suspenso</option>
-                    <option value="trial">Trial</option>
-                  </select>
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Plano</label>
-                  <select
-                    className={styles.select}
-                    value={tenant.plan}
-                    onChange={(e) => updateField('plan', e.target.value)}
-                  >
-                    <option value="free">Gratuito</option>
-                    <option value="basic">Básico</option>
-                    <option value="pro">Profissional</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Plano</label>
+                <select className={styles.select} value={planCode} onChange={(e) => setPlanCode(e.target.value)} disabled={!canWrite}>
+                  {plans.map((plan) => (
+                    <option key={plan.code} value={plan.code}>
+                      {plan.name} ({plan.code})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>Observações</label>
+                <label className={styles.label}>Status da assinatura</label>
+                <select className={styles.select} value={planStatus} onChange={(e) => setPlanStatus(e.target.value)} disabled={!canWrite}>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="TRIAL">TRIAL</option>
+                  <option value="PAST_DUE">PAST_DUE</option>
+                  <option value="CANCELED">CANCELED</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Motivo</label>
                 <textarea
                   className={styles.textarea}
-                  rows={4}
-                  value={tenant.notes}
-                  onChange={(e) => updateField('notes', e.target.value)}
-                  placeholder="Notas internas sobre esta empresa..."
+                  rows={3}
+                  value={planReason}
+                  onChange={(e) => setPlanReason(e.target.value)}
+                  placeholder="Motivo da troca de plano"
+                  disabled={!canWrite}
+                />
+              </div>
+              {canWrite && (
+                <button className={styles.saveButton} onClick={handleSavePlan} disabled={savingPlan}>
+                  {savingPlan ? <Loader2 size={18} className={styles.spinner} /> : <Save size={18} />}
+                  {savingPlan ? 'Salvando...' : 'Salvar Plano'}
+                </button>
+              )}
+              <div className={styles.field}>
+                <label className={styles.label}>Uso atual (JSON)</label>
+                <textarea
+                  className={styles.textarea}
+                  rows={8}
+                  value={JSON.stringify(
+                    {
+                      period_start: usage?.period_start || null,
+                      period_end: usage?.period_end || null,
+                      usage: usage?.usage || {},
+                      limits: usage?.limits || {},
+                    },
+                    null,
+                    2
+                  )}
+                  readOnly
+                  disabled
                 />
               </div>
             </div>

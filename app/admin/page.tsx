@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Users, Activity, TrendingUp, AlertCircle } from 'lucide-react';
+import { adminApi, PlatformUser } from '@/lib/admin-api';
 import styles from './page.module.css';
+
+interface AdminTenant {
+  id: string;
+  status: string | null;
+  created_at: string | null;
+}
 
 interface DashboardStats {
   totalTenants: number;
@@ -20,51 +27,85 @@ export default function AdminDashboard() {
     recentSignups: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simula carregamento de dados
-    // Em produção, isso viria de uma API admin
-    setTimeout(() => {
-      setStats({
-        totalTenants: 12,
-        totalUsers: 45,
-        activeTenants: 10,
-        recentSignups: 3,
-      });
-      setLoading(false);
-    }, 500);
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [tenants, platformUsers] = await Promise.all([
+          adminApi.get<AdminTenant[]>('/api/v1/admin/tenants?limit=200'),
+          adminApi.get<PlatformUser[]>('/api/v1/platform-users/?include_inactive=true'),
+        ]);
+
+        const now = Date.now();
+        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+        const activeTenants = (tenants || []).filter((t) => String(t.status || '').toUpperCase() === 'ACTIVE').length;
+        const recentSignups = (tenants || []).filter((t) => {
+          if (!t.created_at) return false;
+          const createdAt = new Date(t.created_at).getTime();
+          return Number.isFinite(createdAt) && createdAt >= sevenDaysAgo;
+        }).length;
+
+        if (!cancelled) {
+          setStats({
+            totalTenants: (tenants || []).length,
+            totalUsers: (platformUsers || []).length,
+            activeTenants,
+            recentSignups,
+          });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError((err as Error).message || 'Erro ao carregar dashboard admin.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const statCards = [
-    {
-      title: 'Total de Empresas',
-      value: stats.totalTenants,
-      icon: Building2,
-      color: '#3b82f6',
-      bgColor: 'rgba(59, 130, 246, 0.1)',
-    },
-    {
-      title: 'Total de Usuários',
-      value: stats.totalUsers,
-      icon: Users,
-      color: '#10b981',
-      bgColor: 'rgba(16, 185, 129, 0.1)',
-    },
-    {
-      title: 'Empresas Ativas',
-      value: stats.activeTenants,
-      icon: Activity,
-      color: '#8b5cf6',
-      bgColor: 'rgba(139, 92, 246, 0.1)',
-    },
-    {
-      title: 'Novos (7 dias)',
-      value: stats.recentSignups,
-      icon: TrendingUp,
-      color: '#f59e0b',
-      bgColor: 'rgba(245, 158, 11, 0.1)',
-    },
-  ];
+  const statCards = useMemo(
+    () => [
+      {
+        title: 'Total de Empresas',
+        value: stats.totalTenants,
+        icon: Building2,
+        color: '#3b82f6',
+        bgColor: 'rgba(59, 130, 246, 0.1)',
+      },
+      {
+        title: 'Total de Usuários',
+        value: stats.totalUsers,
+        icon: Users,
+        color: '#10b981',
+        bgColor: 'rgba(16, 185, 129, 0.1)',
+      },
+      {
+        title: 'Empresas Ativas',
+        value: stats.activeTenants,
+        icon: Activity,
+        color: '#8b5cf6',
+        bgColor: 'rgba(139, 92, 246, 0.1)',
+      },
+      {
+        title: 'Novos (7 dias)',
+        value: stats.recentSignups,
+        icon: TrendingUp,
+        color: '#f59e0b',
+        bgColor: 'rgba(245, 158, 11, 0.1)',
+      },
+    ],
+    [stats]
+  );
 
   return (
     <div className={styles.page}>
@@ -73,22 +114,16 @@ export default function AdminDashboard() {
         <p className={styles.subtitle}>Visão geral do sistema</p>
       </div>
 
-      {/* Stats Cards */}
       <div className={styles.statsGrid}>
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div key={index} className={styles.statCard}>
-              <div
-                className={styles.statIcon}
-                style={{ backgroundColor: stat.bgColor, color: stat.color }}
-              >
+              <div className={styles.statIcon} style={{ backgroundColor: stat.bgColor, color: stat.color }}>
                 <Icon size={24} />
               </div>
               <div className={styles.statInfo}>
-                <span className={styles.statValue}>
-                  {loading ? '...' : stat.value}
-                </span>
+                <span className={styles.statValue}>{loading ? '...' : stat.value}</span>
                 <span className={styles.statLabel}>{stat.title}</span>
               </div>
             </div>
@@ -96,7 +131,15 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* Quick Actions */}
+      {error && (
+        <div className={styles.alertBox}>
+          <AlertCircle size={20} />
+          <div>
+            <strong>Erro:</strong> {error}
+          </div>
+        </div>
+      )}
+
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Ações Rápidas</h2>
         <div className={styles.actionsGrid}>
@@ -115,12 +158,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Alert */}
       <div className={styles.alertBox}>
         <AlertCircle size={20} />
         <div>
-          <strong>Nota:</strong> Esta é a área administrativa do sistema. 
-          Alterações aqui afetam todas as contas do SaaS.
+          <strong>Nota:</strong> Esta é a área administrativa do sistema. Alterações aqui afetam todas as contas do SaaS.
         </div>
       </div>
     </div>
