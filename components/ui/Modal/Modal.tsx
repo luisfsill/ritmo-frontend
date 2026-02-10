@@ -64,17 +64,24 @@ export function Modal({
         lastFocusedElementRef.current = document.activeElement as HTMLElement | null;
         document.addEventListener('keydown', handleKeyDown);
         document.body.style.overflow = 'hidden';
-        const focusTimeoutId = window.setTimeout(() => {
+        
+        // Delay focus to next frame to avoid interfering with initial render
+        const focusTimeoutId = window.requestAnimationFrame(() => {
             const container = dialogRef.current;
             if (!container) return;
             const focusable = container.querySelector<HTMLElement>(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
             );
-            (focusable || container).focus();
-        }, 0);
+            if (focusable && focusable instanceof HTMLInputElement) {
+                focusable.focus();
+                focusable.select?.();
+            } else if (focusable) {
+                focusable.focus();
+            }
+        });
 
         return () => {
-            window.clearTimeout(focusTimeoutId);
+            cancelAnimationFrame(focusTimeoutId as unknown as number);
             document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = '';
             const previous = lastFocusedElementRef.current;

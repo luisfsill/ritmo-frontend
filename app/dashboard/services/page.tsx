@@ -382,6 +382,7 @@ export default function ServicesPage() {
                 onClose={closeModal}
                 title={editingService ? 'Editar Serviço' : 'Novo Serviço'}
                 size="md"
+                showCloseButton={false}
             >
                 <div className={styles.form}>
                     <div className={styles.formGroup}>
