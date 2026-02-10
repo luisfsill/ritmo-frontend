@@ -87,7 +87,7 @@
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .table {
@@ -213,7 +213,8 @@
 
 /* Actions */
 .actionsCell {
-  position: relative;
+  position: static;
+  z-index: 1;
 }
 
 .moreButton {
@@ -227,6 +228,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  position: relative;
+  z-index: 10;
 }
 
 .moreButton:hover {
@@ -235,16 +238,26 @@
 }
 
 .dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  z-index: 100;
+  z-index: 1000;
   min-width: 150px;
   overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropdownItem {
@@ -306,4 +319,16 @@
   .searchBox {
     min-width: 100%;
   }
+}
+
+/* Dev mode notice */
+.devNotice {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #3b82f6;
+  font-weight: 500;
 }

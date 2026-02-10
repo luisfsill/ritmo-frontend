@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreVertical, Eye, Shield, Users, Plus, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/ui';
@@ -27,6 +27,21 @@ export default function UsersPage() {
   const [createFullName, setCreateFullName] = useState('');
   const [createRole, setCreateRole] = useState<'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT'>('ADMIN');
   const [createTempPassword, setCreateTempPassword] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!activeDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeDropdown]);
 
   const currentAdmin = getAdminUser();
   const isSuperAdmin = String(currentAdmin?.role || '').toUpperCase() === 'SUPER_ADMIN';
@@ -251,7 +266,7 @@ export default function UsersPage() {
                           <MoreVertical size={18} />
                         </button>
                         {activeDropdown === user.id && (
-                          <div className={styles.dropdown}>
+                          <div ref={dropdownRef} className={styles.dropdown}>
                             <button className={styles.dropdownItem} onClick={() => router.push(`/admin/users/${user.id}`)}>
                               <Eye size={16} />
                               Visualizar

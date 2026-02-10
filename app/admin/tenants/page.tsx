@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreVertical, Eye, Edit2, MessageCircle, Building2 } from 'lucide-react';
 import { SearchInput } from '@/components/ui';
@@ -24,6 +24,21 @@ export default function TenantsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!activeDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeDropdown]);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,7 +180,7 @@ export default function TenantsPage() {
                           <MoreVertical size={18} />
                         </button>
                         {activeDropdown === tenant.id && (
-                          <div className={styles.dropdown}>
+                          <div ref={dropdownRef} className={styles.dropdown}>
                             <button
                               className={styles.dropdownItem}
                               onClick={() => router.push(`/admin/tenants/${tenant.id}`)}
