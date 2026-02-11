@@ -5,9 +5,153 @@
 
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, RefObject } from 'react';
 import { trackEvent } from './analytics';
 import { LandingV2SectionId, LandingV2CtaOrigin, LandingV2RegisterOrigin } from './types';
+
+/**
+ * Hook for scroll-triggered animations using Intersection Observer
+ * @param options - Configuration for the animation
+ * @returns ref to attach to element and isVisible state
+ */
+export function useScrollAnimation<T extends HTMLElement = HTMLDivElement>(
+  options: {
+    threshold?: number;
+    rootMargin?: string;
+    triggerOnce?: boolean;
+  } = {}
+): { ref: RefObject<T | null>; isVisible: boolean } {
+  const { threshold = 0.15, rootMargin = '0px 0px -50px 0px', triggerOnce = true } = options;
+  const ref = useRef<T>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          if (triggerOnce) {
+            observer.unobserve(element);
+          }
+        } else if (!triggerOnce) {
+          setIsVisible(false);
+        }
+      },
+      { threshold, rootMargin }
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [threshold, rootMargin, triggerOnce]);
+
+  return { ref, isVisible };
+}
+
+/**
+ * Hook for staggered children animations
+ * Observes a container and triggers animation on children with delay
+ */
+export function useStaggerAnimation<T extends HTMLElement = HTMLDivElement>(
+  options: {
+    threshold?: number;
+    staggerDelay?: number;
+    triggerOnce?: boolean;
+  } = {}
+): { ref: RefObject<T | null>; isVisible: boolean } {
+  const { threshold = 0.1, staggerDelay = 100, triggerOnce = true } = options;
+  const ref = useRef<T>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          
+          // Apply stagger delays to children
+          const children = element.children;
+          Array.from(children).forEach((child, index) => {
+            if (child instanceof HTMLElement) {
+              child.style.transitionDelay = `${index * staggerDelay}ms`;
+            }
+          });
+
+          if (triggerOnce) {
+            observer.unobserve(element);
+          }
+        } else if (!triggerOnce) {
+          setIsVisible(false);
+        }
+      },
+      { threshold, rootMargin: '0px 0px -30px 0px' }
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [threshold, staggerDelay, triggerOnce]);
+
+  return { ref, isVisible };
+}
+
+/**
+ * Hook for parallax scroll effect
+ */
+export function useParallax(speed: number = 0.5): RefObject<HTMLDivElement | null> {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const handleScroll = () => {
+      const rect = element.getBoundingClientRect();
+      const scrolled = window.scrollY;
+      const elementTop = rect.top + scrolled;
+      const offset = (scrolled - elementTop) * speed;
+      
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        element.style.transform = `translateY(${offset}px)`;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [speed]);
+
+  return ref;
+}
 
 /**
  * Hook for tracking analytics events with type safety

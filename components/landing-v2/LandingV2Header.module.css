@@ -29,16 +29,17 @@
 }
 
 .mark {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--landing-accent);
+  background: linear-gradient(135deg, var(--landing-accent) 0%, #0052cc 100%);
   color: #fff;
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
 }
 
 .name {
@@ -62,7 +63,7 @@
 
 .navLink:hover,
 .navLink:focus-visible {
-  color: var(--landing-text);
+  color: var(--landing-accent);
 }
 
 .actions {
@@ -87,16 +88,18 @@
 .loginButton,
 .mobileLogin {
   color: #fff;
-  background: var(--landing-accent);
+  background: linear-gradient(135deg, var(--landing-accent) 0%, #0052cc 100%);
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.25);
 }
 
 .loginButton:hover,
 .mobileLogin:hover {
   color: #fff;
-  background: var(--color-accent-hover, #0066d6);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #3385ff 0%, #0066ff 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 102, 255, 0.35);
 }
 
 .registerButton,
@@ -110,7 +113,9 @@
 .mobileRegister:hover {
   color: #fff;
   border-color: var(--landing-accent);
-  background: var(--landing-accent-soft);
+  background: var(--landing-accent);
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .ctaButton,

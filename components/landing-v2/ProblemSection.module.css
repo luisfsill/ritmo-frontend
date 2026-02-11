@@ -31,32 +31,39 @@
 
 .card {
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(220, 38, 38, 0.15);
-  background: rgba(254, 242, 242, 0.6);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.9) 0%, rgba(254, 226, 226, 0.6) 100%);
   padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.12);
   will-change: transform, opacity;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(239, 68, 68, 0.18);
 }
 
 [data-theme='dark'] .card {
-  background: rgba(220, 38, 38, 0.08);
-  border-color: rgba(220, 38, 38, 0.2);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .iconWrap {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-md);
-  background: rgba(220, 38, 38, 0.1);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
   color: #dc2626;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 [data-theme='dark'] .iconWrap {
-  background: rgba(248, 113, 113, 0.15);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.2) 0%, rgba(248, 113, 113, 0.1) 100%);
   color: #f87171;
 }
 

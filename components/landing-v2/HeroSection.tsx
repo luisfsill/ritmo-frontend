@@ -39,17 +39,17 @@ export const HeroSection = memo(function HeroSection({
     <section id="hero" className={styles.hero}>
       <div className={styles.backdrop} aria-hidden="true" />
       <div className={styles.inner}>
-        <RevealOnScroll className={styles.copy} y={30} duration={0.42}>
+        <RevealOnScroll className={styles.copy} y={50} duration={0.7} blur>
           <span className={styles.badge}>{heroData.badge}</span>
           <h1 className={styles.title}>{renderEmphasis(heroData.title)}</h1>
           <p className={styles.subtitle}>{renderEmphasis(heroData.subtitle)}</p>
 
           <MotionDiv
             className={styles.actions}
-            initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: getDirectionalOffset(scrollDirection, 14) }}
+            initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: getDirectionalOffset(scrollDirection, 30) }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: false, amount: 0.25 }}
-            transition={{ duration: reduceMotion ? 0 : 0.28, delay: reduceMotion ? 0 : 0.06, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: reduceMotion ? 0 : 0.5, delay: reduceMotion ? 0 : 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
             <WhatsAppButton
               href={whatsappHref}
@@ -67,7 +67,7 @@ export const HeroSection = memo(function HeroSection({
           </MotionDiv>
         </RevealOnScroll>
 
-        <RevealOnScroll className={styles.metricsWrap} y={32} duration={0.44} delay={0.04}>
+        <RevealOnScroll className={styles.metricsWrap} y={60} x={30} duration={0.8} delay={0.1} scale={0.95}>
           <p className={styles.metricsLabel}>Indicadores de impacto para leitura em poucos segundos</p>
           <StaggerContainer className={styles.metrics}>
             {heroData.metrics.map((metric) => (

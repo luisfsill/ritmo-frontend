@@ -19,8 +19,8 @@
   top: 0;
   left: 10%;
   right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--landing-border), transparent);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--landing-accent), var(--landing-purple, #8b5cf6), var(--landing-accent), transparent);
 }
 
 .inner h2 {
@@ -58,8 +58,9 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-3);
   border-radius: var(--radius-xl);
-  background: var(--landing-surface-muted);
+  background: linear-gradient(135deg, var(--landing-surface-muted) 0%, rgba(0, 102, 255, 0.03) 100%);
   max-width: 720px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
 .assuranceItem {
@@ -73,8 +74,9 @@
 }
 
 .assuranceItem svg {
-  color: var(--landing-accent);
+  color: var(--landing-success, #10b981);
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
 }
 
 .cta {
