@@ -38,7 +38,7 @@ interface ServiceApiResponse extends Omit<Service, 'reminder_offsets_hhmm'> {
 }
 
 const MAX_REMINDER_OFFSETS = 5;
-const HHMM_PATTERN = /^(\d{2}):(\d{2})$/;
+const HHMM_PATTERN = /^(\d+):(\d{2})$/;
 
 // Atalhos rápidos de alertas mais comuns
 const COMMON_REMINDERS = [
@@ -312,36 +312,39 @@ export default function ServicesPage() {
         setFormData({ ...formData, deposit_cents: cents });
     };
 
-    const addReminderFromMinutes = (totalMinutes: number) => {
+    const addReminderFromMinutes = (totalMinutes: number): boolean => {
         if (totalMinutes <= 0) {
             showToast('Configure um tempo maior que zero.', 'error');
-            return;
+            return false;
         }
 
         const normalizedValue = minutesToHHMM(totalMinutes);
 
         if (formData.reminder_offsets_hhmm.includes(normalizedValue)) {
             showToast('Este alerta já foi adicionado.', 'error');
-            return;
+            return false;
         }
 
         if (formData.reminder_offsets_hhmm.length >= MAX_REMINDER_OFFSETS) {
             showToast(`Limite máximo de ${MAX_REMINDER_OFFSETS} alertas por serviço.`, 'error');
-            return;
+            return false;
         }
 
         setFormData((prev) => ({
             ...prev,
             reminder_offsets_hhmm: normalizeReminderOffsets([...prev.reminder_offsets_hhmm, normalizedValue]),
         }));
+        return true;
     };
 
     const handleAddTimerReminder = () => {
         const totalMinutes = (timerDays * 24 * 60) + (timerHours * 60) + timerMinutes;
-        addReminderFromMinutes(totalMinutes);
-        setTimerDays(0);
-        setTimerHours(0);
-        setTimerMinutes(0);
+        const added = addReminderFromMinutes(totalMinutes);
+        if (added) {
+            setTimerDays(0);
+            setTimerHours(0);
+            setTimerMinutes(0);
+        }
     };
 
     const handleRemoveReminderOffset = (value: string) => {
