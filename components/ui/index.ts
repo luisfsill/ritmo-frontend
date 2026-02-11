@@ -8,3 +8,4 @@ export { WhatsAppModal } from './WhatsAppModal';
 export { SearchInput } from './SearchInput';
 export { ToastProvider, useToast } from './Toast';
 export { ConfirmDialogProvider, useConfirmDialog } from './ConfirmDialog';
+export { default as ScrollPicker } from './ScrollPicker/ScrollPicker';

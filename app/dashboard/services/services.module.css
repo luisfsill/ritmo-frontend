@@ -88,7 +88,7 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 700px;
+    min-width: 820px;
 }
 
 .table th {
@@ -134,6 +134,14 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
+}
+
+.alertsCell {
+    color: var(--color-text-secondary);
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mobileList {
@@ -220,6 +228,12 @@
     display: flex;
     gap: var(--space-2);
     margin-left: auto;
+}
+
+.alertsMobile {
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
 }
 
 .actionButton {
@@ -330,6 +344,100 @@
     font-size: var(--text-sm);
     font-weight: var(--font-medium);
     color: var(--color-text-primary);
+}
+
+.fieldHint {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+}
+
+/* Quick-select chips */
+.quickReminders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-3);
+}
+
+.quickReminderBtn {
+    padding: 5px 12px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    color: var(--color-text-secondary);
+    background-color: transparent;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.quickReminderBtn:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background-color: var(--color-bg-secondary);
+}
+
+.quickReminderBtnAdded {
+    background-color: var(--color-success-subtle);
+    border-color: var(--color-success);
+    color: var(--color-success);
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* Chips de alertas configurados */
+.reminderChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.reminderChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
+}
+
+.reminderChip:hover {
+    border-color: var(--color-accent);
+}
+
+.reminderChip svg {
+    color: var(--color-accent);
+    flex-shrink: 0;
+}
+
+.reminderChipRemove {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 2px;
+    font-size: 11px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.reminderChipRemove:hover {
+    background-color: var(--color-error-subtle);
+    color: var(--color-error);
 }
 
 .textarea {

@@ -22,6 +22,7 @@ export interface CatalogService {
   requires_deposit: boolean;
   deposit_cents: number | null;
   is_active: boolean;
+  reminder_offsets_hhmm: string[];
 }
 
 export interface CatalogStaff {

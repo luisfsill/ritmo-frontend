@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Clock, DollarSign, Loader2 } from 'lucide-react';
-import { Button, Input, SearchInput, Modal, ModalFooter, useConfirmDialog, useToast } from '@/components/ui';
+import { Button, Input, SearchInput, Modal, ModalFooter, ScrollPicker, useConfirmDialog, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import styles from './services.module.css';
 
@@ -16,6 +16,7 @@ interface ServiceFormData {
     requires_deposit: boolean;
     deposit_cents: number;
     is_active: boolean;
+    reminder_offsets_hhmm: string[];
 }
 
 interface Service {
@@ -29,7 +30,91 @@ interface Service {
     requires_deposit: boolean;
     deposit_cents: number | null;
     is_active: boolean;
+    reminder_offsets_hhmm: string[];
 }
+
+interface ServiceApiResponse extends Omit<Service, 'reminder_offsets_hhmm'> {
+    reminder_offsets_hhmm?: string[] | null;
+}
+
+const MAX_REMINDER_OFFSETS = 5;
+const HHMM_PATTERN = /^(\d{2}):(\d{2})$/;
+
+// Atalhos rápidos de alertas mais comuns
+const COMMON_REMINDERS = [
+    { label: '24h antes', minutes: 1440 },
+    { label: '12h antes', minutes: 720 },
+    { label: '2h antes', minutes: 120 },
+    { label: '1h antes', minutes: 60 },
+    { label: '30min antes', minutes: 30 },
+];
+
+const parseHHMMToMinutes = (value: string): number | null => {
+    const raw = value.trim();
+    const match = HHMM_PATTERN.exec(raw);
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+    if (minutes < 0 || minutes > 59) return null;
+
+    const totalMinutes = (hours * 60) + minutes;
+    if (totalMinutes <= 0) return null;
+    return totalMinutes;
+};
+
+const minutesToHHMM = (value: number): string => {
+    const hours = Math.floor(value / 60);
+    const minutes = value % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const formatMinutesToLabel = (value: number): string => {
+    const hours = Math.floor(value / 60);
+    const minutes = value % 60;
+    if (hours === 0) return `${minutes}min`;
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h${String(minutes).padStart(2, '0')}`;
+};
+
+const normalizeReminderOffsets = (offsets: string[] | null | undefined): string[] => {
+    const values = Array.isArray(offsets) ? offsets : [];
+    const uniqueMinutes = new Set<number>();
+
+    values.forEach((item) => {
+        const parsed = parseHHMMToMinutes(item);
+        if (parsed !== null) {
+            uniqueMinutes.add(parsed);
+        }
+    });
+
+    return Array.from(uniqueMinutes)
+        .sort((a, b) => b - a)
+        .slice(0, MAX_REMINDER_OFFSETS)
+        .map(minutesToHHMM);
+};
+
+const formatReminderOffsetsSummary = (offsets: string[] | null | undefined): string => {
+    const normalized = normalizeReminderOffsets(offsets);
+    if (normalized.length === 0) return 'Padrao (24h, 1h)';
+    return normalized
+        .map((value) => {
+            const minutes = parseHHMMToMinutes(value);
+            return minutes === null ? value : formatMinutesToLabel(minutes);
+        })
+        .join(', ');
+};
+
+const formatSingleReminderOffset = (offset: string): string => {
+    const minutes = parseHHMMToMinutes(offset);
+    return minutes === null ? offset : formatMinutesToLabel(minutes);
+};
+
+const normalizeServiceFromApi = (service: ServiceApiResponse): Service => ({
+    ...service,
+    reminder_offsets_hhmm: normalizeReminderOffsets(service.reminder_offsets_hhmm),
+});
 
 export default function ServicesPage() {
     const { showToast } = useToast();
@@ -41,6 +126,9 @@ export default function ServicesPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
     const [saving, setSaving] = useState(false);
+    const [timerDays, setTimerDays] = useState(0);
+    const [timerHours, setTimerHours] = useState(0);
+    const [timerMinutes, setTimerMinutes] = useState(0);
     const [formData, setFormData] = useState<ServiceFormData>({
         name: '',
         description: '',
@@ -51,6 +139,7 @@ export default function ServicesPage() {
         requires_deposit: false,
         deposit_cents: 0,
         is_active: true,
+        reminder_offsets_hhmm: [],
     });
 
     useEffect(() => {
@@ -61,8 +150,8 @@ export default function ServicesPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await api.get<Service[]>('/api/v1/services');
-            setServices(data);
+            const data = await api.get<ServiceApiResponse[]>('/api/v1/services');
+            setServices((data || []).map(normalizeServiceFromApi));
             setError(null);
         } catch (err) {
             const apiError = err as ApiError;
@@ -130,7 +219,11 @@ export default function ServicesPage() {
             requires_deposit: false,
             deposit_cents: 0,
             is_active: true,
+            reminder_offsets_hhmm: [],
         });
+        setTimerDays(0);
+        setTimerHours(0);
+        setTimerMinutes(0);
     };
 
     const openCreateModal = () => {
@@ -151,7 +244,11 @@ export default function ServicesPage() {
             requires_deposit: service.requires_deposit,
             deposit_cents: service.deposit_cents || 0,
             is_active: service.is_active,
+            reminder_offsets_hhmm: normalizeReminderOffsets(service.reminder_offsets_hhmm),
         });
+        setTimerDays(0);
+        setTimerHours(0);
+        setTimerMinutes(0);
         setShowModal(true);
     };
 
@@ -169,6 +266,7 @@ export default function ServicesPage() {
 
         setSaving(true);
         try {
+            const normalizedReminderOffsets = normalizeReminderOffsets(formData.reminder_offsets_hhmm);
             const payload = {
                 name: formData.name.trim(),
                 description: formData.description.trim() || null,
@@ -179,15 +277,16 @@ export default function ServicesPage() {
                 requires_deposit: formData.requires_deposit,
                 deposit_cents: formData.requires_deposit ? formData.deposit_cents : null,
                 is_active: formData.is_active,
+                reminder_offsets_hhmm: normalizedReminderOffsets.length > 0 ? normalizedReminderOffsets : null,
             };
 
             if (editingService) {
-                const updated = await api.patch<Service>(`/api/v1/services/${editingService.id}`, payload);
-                setServices(services.map(s => s.id === editingService.id ? updated : s));
+                const updated = await api.patch<ServiceApiResponse>(`/api/v1/services/${editingService.id}`, payload);
+                setServices(services.map(s => s.id === editingService.id ? normalizeServiceFromApi(updated) : s));
                 showToast('Serviço atualizado com sucesso.', 'success');
             } else {
-                const created = await api.post<Service>('/api/v1/services', payload);
-                setServices([...services, created]);
+                const created = await api.post<ServiceApiResponse>('/api/v1/services', payload);
+                setServices([...services, normalizeServiceFromApi(created)]);
                 showToast('Serviço criado com sucesso.', 'success');
             }
 
@@ -211,6 +310,45 @@ export default function ServicesPage() {
         const numericValue = value.replace(/\D/g, '');
         const cents = parseInt(numericValue, 10) || 0;
         setFormData({ ...formData, deposit_cents: cents });
+    };
+
+    const addReminderFromMinutes = (totalMinutes: number) => {
+        if (totalMinutes <= 0) {
+            showToast('Configure um tempo maior que zero.', 'error');
+            return;
+        }
+
+        const normalizedValue = minutesToHHMM(totalMinutes);
+
+        if (formData.reminder_offsets_hhmm.includes(normalizedValue)) {
+            showToast('Este alerta já foi adicionado.', 'error');
+            return;
+        }
+
+        if (formData.reminder_offsets_hhmm.length >= MAX_REMINDER_OFFSETS) {
+            showToast(`Limite máximo de ${MAX_REMINDER_OFFSETS} alertas por serviço.`, 'error');
+            return;
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            reminder_offsets_hhmm: normalizeReminderOffsets([...prev.reminder_offsets_hhmm, normalizedValue]),
+        }));
+    };
+
+    const handleAddTimerReminder = () => {
+        const totalMinutes = (timerDays * 24 * 60) + (timerHours * 60) + timerMinutes;
+        addReminderFromMinutes(totalMinutes);
+        setTimerDays(0);
+        setTimerHours(0);
+        setTimerMinutes(0);
+    };
+
+    const handleRemoveReminderOffset = (value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            reminder_offsets_hhmm: prev.reminder_offsets_hhmm.filter((item) => item !== value),
+        }));
     };
 
     const formatInputPrice = (cents: number) => {
@@ -281,6 +419,7 @@ export default function ServicesPage() {
                                     <th>Serviço</th>
                                     <th>Duração</th>
                                     <th>Preço</th>
+                                    <th>Alertas</th>
                                     <th>Status</th>
                                     <th></th>
                                 </tr>
@@ -296,6 +435,7 @@ export default function ServicesPage() {
                                         </td>
                                         <td>{formatDuration(service.duration_minutes)}</td>
                                         <td>{formatPriceFromCents(service.price_cents)}</td>
+                                        <td className={styles.alertsCell}>{formatReminderOffsetsSummary(service.reminder_offsets_hhmm)}</td>
                                         <td>
                                             <span className={`${styles.status} ${service.is_active ? styles.active : styles.inactive}`}>
                                                 {service.is_active ? 'Ativo' : 'Inativo'}
@@ -350,6 +490,9 @@ export default function ServicesPage() {
                                         <DollarSign size={16} />
                                         <span>{formatPriceFromCents(service.price_cents)}</span>
                                     </div>
+                                </div>
+                                <div className={styles.alertsMobile}>
+                                    Alertas: {formatReminderOffsetsSummary(service.reminder_offsets_hhmm)}
                                 </div>
 
                                 <div className={styles.cardActions}>
@@ -452,6 +595,63 @@ export default function ServicesPage() {
                                 onChange={(e) => setFormData({ ...formData, buffer_after_minutes: parseInt(e.target.value) || 0 })}
                             />
                         </div>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Alertas de lembrete</label>
+                        <p className={styles.fieldHint}>Quanto tempo antes do horário agendado o cliente será lembrado.</p>
+
+                        {/* Scroll Picker DD:HH:MM */}
+                        <ScrollPicker
+                            days={timerDays}
+                            hours={timerHours}
+                            minutes={timerMinutes}
+                            onDaysChange={setTimerDays}
+                            onHoursChange={setTimerHours}
+                            onMinutesChange={setTimerMinutes}
+                            onAdd={handleAddTimerReminder}
+                            addLabel="Adicionar"
+                        />
+
+                        {/* Atalhos rápidos */}
+                        <div className={styles.quickReminders}>
+                            {COMMON_REMINDERS.map((r) => {
+                                const isAdded = formData.reminder_offsets_hhmm.includes(minutesToHHMM(r.minutes));
+                                return (
+                                    <button
+                                        key={r.minutes}
+                                        type="button"
+                                        className={`${styles.quickReminderBtn} ${isAdded ? styles.quickReminderBtnAdded : ''}`}
+                                        onClick={() => addReminderFromMinutes(r.minutes)}
+                                        disabled={isAdded}
+                                    >
+                                        {isAdded ? '✓ ' : '+ '}{r.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Chips de alertas configurados */}
+                        {formData.reminder_offsets_hhmm.length === 0 ? (
+                            <p className={styles.fieldHint}>Nenhum alerta personalizado — será usado o padrão (24h e 1h antes).</p>
+                        ) : (
+                            <div className={styles.reminderChips}>
+                                {formData.reminder_offsets_hhmm.map((offset) => (
+                                    <span key={offset} className={styles.reminderChip}>
+                                        <Clock size={14} />
+                                        {formatSingleReminderOffset(offset)} antes
+                                        <button
+                                            type="button"
+                                            className={styles.reminderChipRemove}
+                                            onClick={() => handleRemoveReminderOffset(offset)}
+                                            aria-label={`Remover alerta ${offset}`}
+                                        >
+                                            ✕
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.formGroup}>

@@ -1,0 +1,282 @@
+.picker {
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    animation: pickerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pickerFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Columns layout */
+.columns {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.separator {
+    font-size: 24px;
+    font-weight: var(--font-bold);
+    color: var(--color-text-tertiary);
+    user-select: none;
+    padding-top: 18px; /* offset for the label */
+}
+
+/* Individual column */
+.column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 64px;
+}
+
+.columnLabel {
+    font-size: 11px;
+    font-weight: var(--font-medium);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Wheel wrapper */
+.wheelWrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    width: 72px;
+    perspective: 800px; /* Add 3D perspective */
+    perspective-origin: center center;
+}
+
+.wheelWrapperAnimating .highlight {
+    opacity: 0.15;
+    transition: opacity 0.2s ease-out;
+}
+
+/* Highlight bar behind selected item */
+.highlight {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 40px;
+    transform: translateY(-50%);
+    background: linear-gradient(
+        135deg,
+        var(--color-accent) 0%,
+        color-mix(in srgb, var(--color-accent) 85%, white) 100%
+    );
+    opacity: 0.12;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    z-index: 1;
+    border-top: 2px solid color-mix(in srgb, var(--color-accent) 80%, transparent);
+    border-bottom: 2px solid color-mix(in srgb, var(--color-accent) 80%, transparent);
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px -5px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+/* Fade overlays */
+.fadeTop,
+.fadeBottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 70px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.fadeTop {
+    top: 0;
+    background: linear-gradient(
+        to bottom,
+        var(--color-bg-secondary) 0%,
+        color-mix(in srgb, var(--color-bg-secondary) 90%, transparent) 40%,
+        transparent 100%
+    );
+}
+
+.fadeBottom {
+    bottom: 0;
+    background: linear-gradient(
+        to top,
+        var(--color-bg-secondary) 0%,
+        color-mix(in srgb, var(--color-bg-secondary) 90%, transparent) 40%,
+        transparent 100%
+    );
+}
+
+/* Scrollable list */
+.wheelList {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    transform-style: preserve-3d; /* Enable 3D transforms */
+}
+
+.wheelList::-webkit-scrollbar {
+    display: none;
+}
+
+/* Individual item */
+.wheelItem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: var(--font-medium);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    user-select: none;
+    
+    /* 3D transforms with blur */
+    transform: 
+        scale(var(--item-scale, 0.75))
+        rotateX(calc(var(--item-rotate-x, 0) * 1deg))
+        translateZ(0); /* Force GPU acceleration */
+    
+    opacity: var(--item-opacity, 0.35);
+    filter: blur(calc(var(--item-blur, 0) * 1px));
+    
+    /* Smooth spring-like animation */
+    transition: 
+        transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        filter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    will-change: transform, opacity, filter;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+.wheelItemSelected {
+    color: var(--color-text-primary);
+    font-weight: var(--font-bold);
+    filter: blur(0) !important;
+    text-shadow: 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.wheelItem:hover {
+    color: var(--color-text-secondary);
+}
+
+.wheelItem:active {
+    transform: 
+        scale(calc(var(--item-scale, 0.75) * 0.96))
+        rotateX(calc(var(--item-rotate-x, 0) * 1deg));
+    transition-duration: 0.1s;
+}
+
+/* Footer with summary + add button */
+.pickerFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.summaryText {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-secondary);
+}
+
+.addBtn {
+    padding: 8px 16px;
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: white;
+    background: linear-gradient(
+        135deg,
+        var(--color-accent) 0%,
+        color-mix(in srgb, var(--color-accent) 90%, black) 100%
+    );
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.addBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--color-accent) 50%, transparent);
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-accent) 95%, white) 0%,
+        var(--color-accent) 100%
+    );
+}
+
+.addBtn:active:not(:disabled) {
+    transform: translateY(0);
+    transition-duration: 0.1s;
+}
+
+.addBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .column {
+        min-width: 56px;
+    }
+
+    .wheelWrapper {
+        width: 60px;
+    }
+
+    .wheelItem {
+        font-size: 18px;
+    }
+
+    .separator {
+        font-size: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .picker {
+        animation: none;
+    }
+    
+    .wheelItem,
+    .addBtn,
+    .highlight {
+        transition: none;
+    }
+
+    .addBtn:hover:not(:disabled),
+    .wheelItem:active {
+        transform: none;
+    }
+    
+    .wheelItem {
+        transform: scale(var(--item-scale, 0.75));
+        filter: none;
+    }
+}
