@@ -68,18 +68,6 @@ export function LandingV2Header({
           <Link href="/login" className={styles.loginButton}>
             Entrar
           </Link>
-          <Link href={registerHref} className={styles.registerButton} onClick={onDesktopRegisterClick}>
-            Criar conta gratis
-          </Link>
-          <WhatsAppButton
-            href={desktopWhatsappHref}
-            onClick={onDesktopWhatsappClick}
-            variant="primary"
-            size="sm"
-            className={styles.ctaButton}
-          >
-            Falar no WhatsApp
-          </WhatsAppButton>
           <MotionButton
             className={styles.mobileButton}
             onClick={onToggleMobileMenu}
@@ -119,24 +107,6 @@ export function LandingV2Header({
               <Link href="/login" className={styles.mobileLogin} onClick={onCloseMobileMenu}>
                 Entrar
               </Link>
-              <Link href={registerHref} className={styles.mobileRegister} onClick={() => {
-                onMobileRegisterClick();
-                onCloseMobileMenu();
-              }}>
-                Criar conta gratis
-              </Link>
-              <WhatsAppButton
-                href={mobileWhatsappHref}
-                onClick={() => {
-                  onMobileWhatsappClick();
-                  onCloseMobileMenu();
-                }}
-                variant="primary"
-                size="md"
-                className={styles.mobileCta}
-              >
-                Falar no WhatsApp
-              </WhatsAppButton>
             </div>
           </MotionDiv>
         )}

@@ -361,7 +361,9 @@
 .secondaryCta:hover {
   transform: translateY(-1px);
   border-color: var(--landing-accent);
-  box-shadow: var(--shadow-sm);
+  background: var(--landing-accent);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);
 }
 
 @media (max-width: 980px) {
