@@ -43,6 +43,43 @@ interface ClientQueryResponse {
 
 const PAGE_SIZE = 30;
 
+// Formata telefone brasileiro: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+const formatPhoneNumber = (value: string): string => {
+    // Remove tudo que não é dígito
+    const digits = value.replace(/\D/g, '');
+    
+    // Limita a 11 dígitos
+    const limited = digits.slice(0, 11);
+    
+    if (limited.length === 0) return '';
+    if (limited.length <= 2) return `(${limited}`;
+    if (limited.length <= 6) return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+    if (limited.length <= 10) {
+        // Telefone fixo: (XX) XXXX-XXXX
+        return `(${limited.slice(0, 2)}) ${limited.slice(2, 6)}-${limited.slice(6)}`;
+    }
+    // Celular: (XX) XXXXX-XXXX
+    return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+};
+
+// Extrai apenas os dígitos do telefone formatado
+const extractPhoneDigits = (value: string): string => {
+    return value.replace(/\D/g, '');
+};
+
+// Formata CEP brasileiro: XXXXX-XXX
+const formatPostalCode = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length === 0) return '';
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
+// Extrai apenas os dígitos do CEP formatado
+const extractPostalCodeDigits = (value: string): string => {
+    return value.replace(/\D/g, '').slice(0, 8);
+};
+
 const emptyAddress = (): ClientAddress => ({
     street: '',
     number: '',
@@ -424,7 +461,15 @@ export default function ClientsPage() {
                 </>
             )}
 
-            <Modal isOpen={showModal} onClose={closeModal} title={editingClient ? 'Editar Cliente' : 'Novo Cliente'} size="md">
+            <Modal
+                isOpen={showModal}
+                onClose={closeModal}
+                title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
+                size="md"
+                showCloseButton={false}
+                closeOnOverlayClick={false}
+                closeOnEscape={false}
+            >
                 <div className={styles.form}>
                     <div className={styles.formGroup}>
                         <label className={styles.formLabel}>Nome completo *</label>
@@ -439,8 +484,8 @@ export default function ClientsPage() {
                         <label className={styles.formLabel}>Telefone / WhatsApp</label>
                         <Input
                             type="tel"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            value={formatPhoneNumber(formData.phone)}
+                            onChange={(e) => setFormData({ ...formData, phone: extractPhoneDigits(e.target.value) })}
                             placeholder="(11) 99999-9999"
                         />
                     </div>
@@ -546,11 +591,11 @@ export default function ClientsPage() {
                     <div className={styles.formGroup}>
                         <label className={styles.formLabel}>CEP</label>
                         <Input
-                            value={formData.address.postal_code || ''}
+                            value={formatPostalCode(formData.address.postal_code || '')}
                             onChange={(e) =>
                                 setFormData({
                                     ...formData,
-                                    address: { ...formData.address, postal_code: e.target.value },
+                                    address: { ...formData.address, postal_code: extractPostalCodeDigits(e.target.value) },
                                 })
                             }
                             placeholder="00000-000"

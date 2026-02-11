@@ -168,10 +168,6 @@ export default function DashboardPage() {
                     <h1 className={styles.title}>Dashboard</h1>
                     <p className={styles.subtitle}>Visão geral do seu negócio</p>
                 </div>
-                <Link href="/dashboard/appointments/new" className={styles.newButton}>
-                    <Calendar size={18} />
-                    Novo Agendamento
-                </Link>
             </div>
 
             {summary && (

@@ -383,6 +383,8 @@ export default function ServicesPage() {
                 title={editingService ? 'Editar Serviço' : 'Novo Serviço'}
                 size="md"
                 showCloseButton={false}
+                closeOnOverlayClick={false}
+                closeOnEscape={false}
             >
                 <div className={styles.form}>
                     <div className={styles.formGroup}>

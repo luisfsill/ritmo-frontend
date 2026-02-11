@@ -34,6 +34,22 @@ interface Client {
     phone: string | null;
 }
 
+// Formata telefone brasileiro: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+const formatPhoneNumber = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length === 0) return '';
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const extractPhoneDigits = (value: string): string => {
+    return value.replace(/\D/g, '').slice(0, 11);
+};
+
 export default function CalendarPage() {
     const { showToast } = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -329,6 +345,9 @@ export default function CalendarPage() {
                 onClose={closeModal}
                 title="Novo Agendamento"
                 size="md"
+                showCloseButton={false}
+                closeOnOverlayClick={false}
+                closeOnEscape={false}
             >
                 <div className={styles.form}>
                     <div className={styles.formGroup}>
@@ -344,8 +363,8 @@ export default function CalendarPage() {
                         <label className={styles.formLabel}>Telefone / WhatsApp *</label>
                         <Input
                             type="tel"
-                            value={formData.client_phone}
-                            onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+                            value={formatPhoneNumber(formData.client_phone)}
+                            onChange={(e) => setFormData({ ...formData, client_phone: extractPhoneDigits(e.target.value) })}
                             placeholder="(11) 99999-9999"
                         />
                     </div>

@@ -276,6 +276,9 @@ export default function StaffPage() {
                 onClose={closeModal}
                 title={editingStaff ? 'Editar Profissional' : 'Novo Profissional'}
                 size="sm"
+                showCloseButton={false}
+                closeOnOverlayClick={false}
+                closeOnEscape={false}
             >
                 <div className={styles.form}>
                     <div className={styles.formGroup}>

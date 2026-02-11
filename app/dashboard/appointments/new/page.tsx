@@ -50,6 +50,34 @@ const emptyAddress = (): ClientAddress => ({
     country_code: '',
 });
 
+// Formata telefone brasileiro: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+const formatPhoneNumber = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length === 0) return '';
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const extractPhoneDigits = (value: string): string => {
+    return value.replace(/\D/g, '').slice(0, 11);
+};
+
+// Formata CEP brasileiro: XXXXX-XXX
+const formatPostalCode = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length === 0) return '';
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
+const extractPostalCodeDigits = (value: string): string => {
+    return value.replace(/\D/g, '').slice(0, 8);
+};
+
 const normalizeAddressForApi = (address: ClientAddress): ClientAddress | null => {
     const normalized: ClientAddress = {
         street: address.street?.trim() || null,
@@ -450,8 +478,8 @@ export default function NewAppointmentPage() {
                                 />
                                 <Input
                                     label="Telefone"
-                                    value={newClientPhone}
-                                    onChange={(e) => setNewClientPhone(e.target.value)}
+                                    value={formatPhoneNumber(newClientPhone)}
+                                    onChange={(e) => setNewClientPhone(extractPhoneDigits(e.target.value))}
                                     placeholder="(00) 00000-0000"
                                 />
                                 <Input
@@ -504,9 +532,9 @@ export default function NewAppointmentPage() {
                                 />
                                 <Input
                                     label="CEP"
-                                    value={newClientAddress.postal_code || ''}
+                                    value={formatPostalCode(newClientAddress.postal_code || '')}
                                     onChange={(e) =>
-                                        setNewClientAddress((prev) => ({ ...prev, postal_code: e.target.value }))
+                                        setNewClientAddress((prev) => ({ ...prev, postal_code: extractPostalCodeDigits(e.target.value) }))
                                     }
                                     placeholder="00000-000"
                                 />
