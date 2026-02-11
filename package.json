@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@hookform/resolvers": "^3.9.1",
+    "framer-motion": "^12.34.0",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",
     "qrcode": "^1.5.4",
