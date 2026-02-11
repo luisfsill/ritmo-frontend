@@ -65,6 +65,9 @@ export function LandingV2Header({
         </nav>
 
         <div className={styles.actions}>
+          <Link href="/login" className={styles.loginButton}>
+            Entrar
+          </Link>
           <Link href={registerHref} className={styles.registerButton} onClick={onDesktopRegisterClick}>
             Criar conta gratis
           </Link>
@@ -113,6 +116,9 @@ export function LandingV2Header({
               <a href="#faq" className={styles.mobileLink} onClick={handleMobileNavClick('faq')}>FAQ</a>
             </nav>
             <div className={styles.mobileActions}>
+              <Link href="/login" className={styles.mobileLogin} onClick={onCloseMobileMenu}>
+                Entrar
+              </Link>
               <Link href={registerHref} className={styles.mobileRegister} onClick={() => {
                 onMobileRegisterClick();
                 onCloseMobileMenu();

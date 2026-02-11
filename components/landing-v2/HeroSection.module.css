@@ -8,8 +8,8 @@
   inset: var(--space-2) var(--space-3) 0 var(--space-3);
   z-index: -1;
   background:
-    radial-gradient(circle at 14% 18%, color-mix(in oklab, var(--landing-accent-2) 12%, transparent), transparent 44%),
-    radial-gradient(circle at 92% 12%, color-mix(in oklab, var(--landing-accent) 14%, transparent), transparent 36%);
+    radial-gradient(circle at 14% 18%, var(--landing-accent-soft), transparent 44%),
+    radial-gradient(circle at 92% 12%, var(--landing-accent-soft), transparent 36%);
 }
 
 .inner {
@@ -30,11 +30,12 @@
   align-items: center;
   border-radius: var(--radius-full);
   padding: 8px 14px;
-  border: 1px solid color-mix(in oklab, var(--landing-accent) 22%, var(--landing-border));
-  background: color-mix(in oklab, var(--landing-surface) 92%, var(--landing-accent) 8%);
-  color: var(--landing-text);
+  border: 1px solid var(--landing-border);
+  background: var(--landing-surface);
+  color: var(--landing-muted);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
+  box-shadow: var(--shadow-xs);
 }
 
 .title {
@@ -88,7 +89,8 @@
 
 .secondaryCta:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--landing-accent) 34%, var(--landing-border));
+  border-color: var(--landing-accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .primaryCta:focus-visible,
@@ -100,9 +102,9 @@
 .metricsWrap {
   border: 1px solid var(--landing-border);
   border-radius: var(--radius-2xl);
-  background: color-mix(in oklab, var(--landing-surface) 96%, transparent);
+  background: var(--landing-surface);
   padding: var(--space-6);
-  box-shadow: 0 10px 24px color-mix(in oklab, var(--landing-accent) 8%, transparent);
+  box-shadow: var(--shadow-md);
   will-change: transform, opacity;
 }
 
@@ -119,7 +121,7 @@
 }
 
 .metricCard {
-  border: 1px solid color-mix(in oklab, var(--landing-accent) 14%, var(--landing-border));
+  border: 1px solid var(--landing-border);
   border-radius: var(--radius-xl);
   background: var(--landing-surface-muted);
   padding: var(--space-4);

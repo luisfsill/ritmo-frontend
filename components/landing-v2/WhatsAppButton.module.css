@@ -70,7 +70,7 @@
   color: #128C7E;
   transform: translateY(-1px);
   border-color: rgba(37, 211, 102, 0.7);
-  background: color-mix(in oklab, #25D366 8%, var(--landing-surface, #fff));
+  background: rgba(37, 211, 102, 0.08);
   box-shadow:
     0 4px 12px rgba(37, 211, 102, 0.14),
     0 1px 3px rgba(0, 0, 0, 0.06);
@@ -85,13 +85,13 @@
 .whatsapp-btn-outline {
   background: transparent;
   color: var(--landing-text, #334155);
-  border: 1.5px solid color-mix(in oklab, #25D366 30%, var(--landing-border, #e2e8f0));
+  border: 1.5px solid rgba(37, 211, 102, 0.3);
 }
 
 .whatsapp-btn-outline:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, #25D366 55%, var(--landing-border, #e2e8f0));
-  background: color-mix(in oklab, #25D366 6%, transparent);
+  border-color: rgba(37, 211, 102, 0.55);
+  background: rgba(37, 211, 102, 0.06);
 }
 
 .whatsapp-btn-outline:active {

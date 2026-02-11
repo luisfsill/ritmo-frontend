@@ -31,23 +31,33 @@
 
 .card {
   border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in oklab, #dc2626 18%, var(--landing-border));
-  background: color-mix(in oklab, var(--landing-surface) 92%, #dc2626 8%);
+  border: 1px solid rgba(220, 38, 38, 0.15);
+  background: rgba(254, 242, 242, 0.6);
   padding: var(--space-6);
-  box-shadow: 0 8px 18px color-mix(in oklab, #dc2626 8%, transparent);
+  box-shadow: var(--shadow-sm);
   will-change: transform, opacity;
+}
+
+[data-theme='dark'] .card {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .iconWrap {
   width: 42px;
   height: 42px;
   border-radius: var(--radius-md);
-  background: color-mix(in oklab, #dc2626 14%, transparent);
-  color: #f87171;
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-3);
+}
+
+[data-theme='dark'] .iconWrap {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
 }
 
 .card h3 {

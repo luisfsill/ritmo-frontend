@@ -13,7 +13,6 @@ export function LandingV2Footer() {
         <nav className={styles.links} aria-label="Links institucionais">
           <Link href="/terms">Termos</Link>
           <Link href="/privacy">Privacidade</Link>
-          <Link href="/login">Entrar</Link>
         </nav>
       </div>
     </footer>
