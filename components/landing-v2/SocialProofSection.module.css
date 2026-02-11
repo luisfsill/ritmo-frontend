@@ -13,6 +13,7 @@
 
 .copy {
   max-width: 760px;
+  margin-bottom: var(--space-8);
 }
 
 .title {
@@ -25,120 +26,64 @@
   line-height: var(--leading-relaxed);
 }
 
-.stats {
-  margin-top: var(--space-8);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.statCard {
-  border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in oklab, var(--landing-accent) 14%, var(--landing-border));
-  background: var(--landing-surface);
-  padding: var(--space-5);
-  display: grid;
-  gap: var(--space-2);
-  will-change: transform, opacity;
-}
-
-.metricName {
-  color: var(--landing-muted);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-}
-
-.statCard strong {
-  font-size: clamp(1.7rem, 2.7vw, 2.15rem);
-  color: var(--landing-text);
-}
-
-.baseline {
-  color: var(--landing-text);
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-}
-
-.statCard small {
-  color: var(--landing-muted);
-  font-size: var(--text-xs);
-  line-height: var(--leading-relaxed);
-}
-
-.testimonials {
-  margin-top: var(--space-6);
+.segments {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
-.testimonial {
+.segmentCard {
   border-radius: var(--radius-xl);
   border: 1px solid var(--landing-border);
   background: var(--landing-surface-muted);
   padding: var(--space-6);
-  display: grid;
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   will-change: transform, opacity;
+  transition: border-color 0.2s ease;
 }
 
-.testimonial p {
+.segmentCard:hover {
+  border-color: color-mix(in oklab, var(--landing-accent) 40%, var(--landing-border));
+}
+
+.segmentIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--landing-accent) 12%, transparent);
+  color: var(--landing-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.segmentName {
+  font-size: var(--text-lg);
   color: var(--landing-text);
-  line-height: var(--leading-relaxed);
+  font-weight: 600;
 }
 
-.author {
-  display: grid;
-  gap: 3px;
-}
-
-.author strong {
-  color: var(--landing-text);
-}
-
-.author span,
-.author small {
+.segmentScenario {
   color: var(--landing-muted);
   font-size: var(--text-sm);
-}
-
-.logos {
-  margin-top: var(--space-6);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.logo {
-  border: 1px solid var(--landing-border);
-  border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--landing-surface-muted) 94%, transparent);
-  color: var(--landing-text);
-  padding: var(--space-4);
-  text-align: center;
-  font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
-  will-change: transform, opacity;
 }
 
-@media (max-width: 960px) {
-  .stats,
-  .testimonials {
+.segmentOutcome {
+  color: var(--landing-accent);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin-top: auto;
+}
+
+@media (max-width: 760px) {
+  .segments {
     grid-template-columns: 1fr;
   }
 
-  .logos {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
   .section {
     padding: var(--space-12) var(--space-4);
-  }
-
-  .logos {
-    grid-template-columns: 1fr;
   }
 }

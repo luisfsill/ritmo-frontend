@@ -6,9 +6,7 @@ import {
   PricingPlan,
   ProblemItem,
   RevenueScenario,
-  SocialStat,
   SolutionItem,
-  Testimonial,
 } from './types';
 
 export const heroData = {
@@ -72,44 +70,34 @@ export const solutionItems: SolutionItem[] = [
   },
 ];
 
-export const socialStats: SocialStat[] = [
+export type TargetSegment = {
+  name: string;
+  scenario: string;
+  outcome: string;
+};
+
+export const targetSegments: TargetSegment[] = [
   {
-    value: '+18%',
-    metric: 'Agenda semanal mais ocupada',
-    baselineLabel: 'Comparado ao período anterior',
-    confidenceNote: 'Resultado médio com lembretes e remarcação ativos',
+    name: 'Salão de beleza',
+    scenario: 'Recepção dividida entre atender telefone, responder WhatsApp e cuidar de quem já está no salão. Horários vagos só aparecem quando é tarde demais.',
+    outcome: 'Agenda preenchida automaticamente, sem depender da recepção',
   },
   {
-    value: '-35%',
-    metric: 'Redução de faltas sem aviso',
-    baselineLabel: 'Com lembretes em 24h e 1h',
-    confidenceNote: 'Pode variar conforme perfil da operação',
+    name: 'Clínica de estética',
+    scenario: 'Procedimentos longos e caros. Um horário vazio pesa no faturamento, e remarcar exige ligar para cada cliente da lista de espera.',
+    outcome: 'Lista de espera ativada em segundos quando alguém desmarca',
   },
   {
-    value: '< 2 min',
-    metric: 'Tempo médio da primeira resposta',
-    baselineLabel: 'Atendimento 24h no WhatsApp',
+    name: 'Barbearia premium',
+    scenario: 'Clientes fiéis que voltam toda semana, mas esquecem de agendar. A equipe gasta tempo mandando lembretes manuais pelo WhatsApp.',
+    outcome: 'Lembretes e reagendamento automático para clientes recorrentes',
+  },
+  {
+    name: 'Spa urbano',
+    scenario: 'Pacotes com múltiplas sessões e profissionais diferentes. Coordenar disponibilidade vira um quebra-cabeça que consome o dia.',
+    outcome: 'Agendamento inteligente que cruza disponibilidade de toda a equipe',
   },
 ];
-
-export const testimonials: Testimonial[] = [
-  {
-    quote:
-      'Antes a recepção travava com mensagens repetidas. Agora o cliente já recebe opções certas e chega confirmado.',
-    name: 'Mariana Costa',
-    role: 'Gestora, Studio de Estética',
-    result: 'Mais previsibilidade na agenda da semana',
-  },
-  {
-    quote:
-      'Quando alguém desmarca, a lista de espera recebe aviso na hora. Os horários vazios caíram muito.',
-    name: 'Rafael Gomes',
-    role: 'Coordenador, Clínica Multisserviço',
-    result: 'Aproveitamento maior dos horários de pico',
-  },
-];
-
-export const customerSegments: string[] = ['Salão de beleza', 'Clínica de estética', 'Barbearia premium', 'Spa urbano'];
 
 export const demoSteps: DemoStepSimple[] = [
   {
