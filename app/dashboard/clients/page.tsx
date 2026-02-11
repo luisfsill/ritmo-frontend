@@ -41,6 +41,18 @@ interface ClientQueryResponse {
     total: number;
 }
 
+type ClientSegment = 'all' | 'never_booked' | 'new_clients' | 'recurrent_clients' | 'inactive_clients';
+
+const SEGMENT_WINDOW_DAYS = 30;
+const SEGMENT_WINDOW_INACTIVE_DAYS = 60;
+const SEGMENT_OPTIONS: Array<{ value: ClientSegment; label: string }> = [
+    { value: 'all', label: 'Todos' },
+    { value: 'never_booked', label: 'Nunca agendaram' },
+    { value: 'new_clients', label: 'Novos' },
+    { value: 'recurrent_clients', label: 'Recorrentes' },
+    { value: 'inactive_clients', label: 'Inativos' },
+];
+
 const PAGE_SIZE = 30;
 
 // Formata telefone brasileiro: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
@@ -129,6 +141,7 @@ export default function ClientsPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
+    const [segment, setSegment] = useState<ClientSegment>('all');
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [totalCount, setTotalCount] = useState(0);
     const [showModal, setShowModal] = useState(false);
@@ -148,7 +161,12 @@ export default function ClientsPage() {
         return () => window.clearTimeout(timeout);
     }, [searchQuery]);
 
-    const loadClients = useCallback(async (reset: boolean, cursor: string | null, query: string) => {
+    const loadClients = useCallback(async (
+        reset: boolean,
+        cursor: string | null,
+        query: string,
+        segmentFilter: ClientSegment,
+    ) => {
         if (reset) {
             setIsLoading(true);
         } else {
@@ -160,6 +178,9 @@ export default function ClientsPage() {
         try {
             const params = new URLSearchParams();
             params.set('limit', String(PAGE_SIZE));
+            params.set('segment', segmentFilter);
+            params.set('days', String(SEGMENT_WINDOW_DAYS));
+            params.set('inactive_days', String(SEGMENT_WINDOW_INACTIVE_DAYS));
             if (query) params.set('q', query);
             if (!reset && cursor) params.set('cursor', cursor);
             const endpoint = `/api/v1/clients/query?${params.toString()}`;
@@ -183,8 +204,8 @@ export default function ClientsPage() {
     }, []);
 
     useEffect(() => {
-        void loadClients(true, null, debouncedQuery);
-    }, [debouncedQuery, loadClients]);
+        void loadClients(true, null, debouncedQuery, segment);
+    }, [debouncedQuery, segment, loadClients]);
 
     const handleDelete = async (id: string) => {
         const confirmed = await confirmDialog({
@@ -199,7 +220,7 @@ export default function ClientsPage() {
         try {
             await api.delete(`/api/v1/clients/${id}`, { confirm: true });
             showToast('Cliente excluído com sucesso.', 'success');
-            await loadClients(true, null, debouncedQuery);
+            await loadClients(true, null, debouncedQuery, segment);
         } catch (err) {
             const apiError = err as ApiError;
             showToast(apiError.message || 'Erro ao excluir cliente. Tente novamente.', 'error');
@@ -277,7 +298,7 @@ export default function ClientsPage() {
             }
 
             closeModal();
-            await loadClients(true, null, debouncedQuery);
+            await loadClients(true, null, debouncedQuery, segment);
         } catch (err) {
             const apiError = err as ApiError;
             showToast(apiError.message || 'Erro ao salvar cliente. Tente novamente.', 'error');
@@ -287,6 +308,8 @@ export default function ClientsPage() {
     };
 
     const hasNoResults = !isLoading && !error && clients.length === 0;
+    const hasActiveSegment = segment !== 'all';
+    const selectedSegmentLabel = SEGMENT_OPTIONS.find((option) => option.value === segment)?.label || 'Todos';
 
     return (
         <div className={styles.page}>
@@ -306,10 +329,33 @@ export default function ClientsPage() {
                     onChange={setSearchQuery}
                     placeholder="Buscar por nome, telefone, e-mail ou WhatsApp..."
                 />
+                <div className={styles.segmentFilters} role="group" aria-label="Filtro por segmento">
+                    {SEGMENT_OPTIONS.map((option) => (
+                        <button
+                            key={option.value}
+                            type="button"
+                            className={`${styles.segmentChip} ${segment === option.value ? styles.segmentChipActive : ''}`}
+                            onClick={() => setSegment(option.value)}
+                            aria-pressed={segment === option.value}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
                 <div className={styles.count}>
                     {clients.length} de {totalCount} cliente{totalCount !== 1 ? 's' : ''}
                 </div>
             </div>
+            {hasActiveSegment && (
+                <div className={styles.activeFilterRow}>
+                    <span className={styles.activeFilterText}>
+                        Filtro ativo: {selectedSegmentLabel}
+                    </span>
+                    <button type="button" className={styles.clearFilterButton} onClick={() => setSegment('all')}>
+                        Limpar filtro
+                    </button>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className={styles.loadingState}>
@@ -319,7 +365,7 @@ export default function ClientsPage() {
             ) : error ? (
                 <div className={styles.errorState}>
                     <p>{error}</p>
-                    <Button variant="secondary" onClick={() => void loadClients(true, null, debouncedQuery)}>
+                    <Button variant="secondary" onClick={() => void loadClients(true, null, debouncedQuery, segment)}>
                         Tentar novamente
                     </Button>
                 </div>
@@ -451,7 +497,7 @@ export default function ClientsPage() {
                         <div className={styles.loadMore}>
                             <Button
                                 variant="secondary"
-                                onClick={() => void loadClients(false, nextCursor, debouncedQuery)}
+                                onClick={() => void loadClients(false, nextCursor, debouncedQuery, segment)}
                                 isLoading={isLoadingMore}
                             >
                                 Carregar mais

@@ -27,6 +27,16 @@ interface DashboardSummary {
     clients: number;
 }
 
+interface ClientSegmentationReport {
+    days: number;
+    inactive_days: number;
+    total_clients: number;
+    never_booked: number;
+    new_clients: number;
+    recurrent_clients: number;
+    inactive_clients: number;
+}
+
 export default function AnalyticsPage() {
     const [period, setPeriod] = useState('month');
     const [loading, setLoading] = useState(true);
@@ -34,6 +44,7 @@ export default function AnalyticsPage() {
     const [occupancy, setOccupancy] = useState<OccupancyReport | null>(null);
     const [topServices, setTopServices] = useState<ServiceMixItem[]>([]);
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
+    const [segmentation, setSegmentation] = useState<ClientSegmentationReport | null>(null);
 
     const getDaysFromPeriod = (p: string) => {
         switch (p) {
@@ -51,17 +62,19 @@ export default function AnalyticsPage() {
             const days = getDaysFromPeriod(period);
 
             try {
-                const [revenueRes, occupancyRes, serviceMixRes, summaryRes] = await Promise.all([
+                const [revenueRes, occupancyRes, serviceMixRes, summaryRes, segmentationRes] = await Promise.all([
                     api.get<RevenueReport>(`/api/v1/dashboard/analytics/revenue?days=${days}`).catch(() => null),
                     api.get<OccupancyReport>(`/api/v1/dashboard/analytics/occupancy?days=${days}`).catch(() => null),
                     api.get<ServiceMixItem[]>(`/api/v1/dashboard/analytics/service-mix?days=${days}`).catch(() => []),
-                    api.get<DashboardSummary>(`/api/v1/dashboard/summary?days=${days}`).catch(() => null)
+                    api.get<DashboardSummary>(`/api/v1/dashboard/summary?days=${days}`).catch(() => null),
+                    api.get<ClientSegmentationReport>('/api/v1/dashboard/analytics/client-segmentation').catch(() => null),
                 ]);
 
                 setRevenue(revenueRes);
                 setOccupancy(occupancyRes);
                 setTopServices(Array.isArray(serviceMixRes) ? serviceMixRes : []);
                 setSummary(summaryRes && typeof summaryRes === 'object' ? summaryRes : null);
+                setSegmentation(segmentationRes && typeof segmentationRes === 'object' ? segmentationRes : null);
             } catch (err) {
                 const error = err as { message?: string; status?: number };
                 console.error('Erro ao carregar analytics:', error.status === 0 ? 'Serviço fora do ar' : err);
@@ -118,6 +131,13 @@ export default function AnalyticsPage() {
         },
     ] : [];
 
+    const segmentationCards = segmentation ? [
+        { key: 'never_booked', label: 'Nunca agendaram', value: segmentation.never_booked },
+        { key: 'new_clients', label: 'Novos clientes', value: segmentation.new_clients },
+        { key: 'recurrent_clients', label: 'Recorrentes', value: segmentation.recurrent_clients },
+        { key: 'inactive_clients', label: 'Inativos', value: segmentation.inactive_clients },
+    ] : [];
+
     if (loading) {
         return (
             <div className={styles.page}>
@@ -164,6 +184,38 @@ export default function AnalyticsPage() {
                     })}
                 </div>
             )}
+
+            <section className={styles.segmentationSection} aria-label="Segmentacao de clientes">
+                <div className={styles.segmentHeader}>
+                    <div>
+                        <h2 className={styles.segmentTitle}>Segmentacao de clientes</h2>
+                        <p className={styles.segmentSubtitle}>
+                            {segmentation
+                                ? `Janela: ${segmentation.days}d recentes e ${segmentation.inactive_days}d para inativos`
+                                : 'Nao foi possivel carregar a segmentacao no momento'}
+                        </p>
+                    </div>
+                    {segmentation && (
+                        <span className={styles.segmentTotal}>
+                            Total: {segmentation.total_clients}
+                        </span>
+                    )}
+                </div>
+                {segmentationCards.length > 0 ? (
+                    <div className={styles.segmentGrid}>
+                        {segmentationCards.map((item) => (
+                            <article key={item.key} className={styles.segmentCard}>
+                                <span className={styles.segmentLabel}>{item.label}</span>
+                                <strong className={styles.segmentValue}>{item.value}</strong>
+                            </article>
+                        ))}
+                    </div>
+                ) : (
+                    <div className={styles.segmentEmpty}>
+                        Segmentacao indisponivel. Os demais relatorios continuam funcionando.
+                    </div>
+                )}
+            </section>
 
             <div className={styles.chartsGrid}>
                 <div className={styles.chartCard}>

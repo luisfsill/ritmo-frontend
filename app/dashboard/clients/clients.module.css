@@ -45,6 +45,63 @@
     }
 }
 
+.segmentFilters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.segmentChip {
+    height: 32px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.segmentChip:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-accent);
+}
+
+.segmentChipActive {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+    background-color: var(--color-accent-subtle);
+}
+
+.activeFilterRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: calc(var(--space-3) * -1);
+}
+
+.activeFilterText {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.clearFilterButton {
+    padding: 0;
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.clearFilterButton:hover {
+    text-decoration: underline;
+}
+
 .searchWrapper {
     position: relative;
     flex: 1;
@@ -52,6 +109,10 @@
 }
 
 @media (max-width: 640px) {
+    .segmentFilters {
+        justify-content: flex-start;
+    }
+
     .searchWrapper {
         max-width: none;
     }
