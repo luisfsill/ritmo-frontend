@@ -9,7 +9,7 @@ export default function TermsPage() {
     return (
         <div className={styles.container}>
             <nav className={styles.navbar}>
-                <Link href="/register" className={styles.backLink}>
+                <Link href="/" className={styles.backLink}>
                     <ArrowLeft size={20} />
                     <span>Voltar</span>
                 </Link>
