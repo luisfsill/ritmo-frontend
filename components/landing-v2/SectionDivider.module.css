@@ -1,0 +1,48 @@
+/* ─── Section Divider ─── */
+
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 48px;
+}
+
+.line {
+  flex: 1;
+  max-width: 280px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--landing-border, rgba(0, 0, 0, 0.1))
+  );
+}
+
+.line:last-child {
+  background: linear-gradient(
+    270deg,
+    transparent,
+    var(--landing-border, rgba(0, 0, 0, 0.1))
+  );
+}
+
+.diamond {
+  width: 6px;
+  height: 6px;
+  background: var(--landing-accent);
+  transform: rotate(45deg);
+  border-radius: 1px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .divider {
+    padding: 24px 24px;
+  }
+
+  .line {
+    max-width: 120px;
+  }
+}

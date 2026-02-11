@@ -40,8 +40,8 @@ export const heroData = {
 
 export const problemItems: ProblemItem[] = [
   {
-    title: 'A equipe para toda hora para responder mensagem',
-    description: 'O atendimento vira interrupção contínua para explicar horário, preço e remarcação.',
+    title: 'A equipe interrompe o trabalho toda hora para responder mensagem',
+    description: 'O atendimento vira distração contínua: explicar horário, preço e remarcação.',
   },
   {
     title: 'Horários vazios por falta de confirmação',
@@ -76,18 +76,18 @@ export const socialStats: SocialStat[] = [
   {
     value: '+18%',
     metric: 'Agenda semanal mais ocupada',
-    baselineLabel: 'Comparado ao periodo anterior',
-    confidenceNote: 'Resultado medio com lembretes e remarcacao ativos',
+    baselineLabel: 'Comparado ao período anterior',
+    confidenceNote: 'Resultado médio com lembretes e remarcação ativos',
   },
   {
     value: '-35%',
-    metric: 'Reducao de faltas sem aviso',
+    metric: 'Redução de faltas sem aviso',
     baselineLabel: 'Com lembretes em 24h e 1h',
-    confidenceNote: 'Pode variar conforme perfil da operacao',
+    confidenceNote: 'Pode variar conforme perfil da operação',
   },
   {
     value: '< 2 min',
-    metric: 'Tempo medio da primeira resposta',
+    metric: 'Tempo médio da primeira resposta',
     baselineLabel: 'Atendimento 24h no WhatsApp',
   },
 ];
@@ -95,21 +95,21 @@ export const socialStats: SocialStat[] = [
 export const testimonials: Testimonial[] = [
   {
     quote:
-      'Antes a recepcao travava com mensagens repetidas. Agora o cliente ja recebe opcoes certas e chega confirmado.',
+      'Antes a recepção travava com mensagens repetidas. Agora o cliente já recebe opções certas e chega confirmado.',
     name: 'Mariana Costa',
-    role: 'Gestora, Studio de Estetica',
+    role: 'Gestora, Studio de Estética',
     result: 'Mais previsibilidade na agenda da semana',
   },
   {
     quote:
-      'Quando alguem desmarca, a lista de espera recebe aviso na hora. Os horarios vazios cairam muito.',
+      'Quando alguém desmarca, a lista de espera recebe aviso na hora. Os horários vazios caíram muito.',
     name: 'Rafael Gomes',
-    role: 'Coordenador, Clinica Multisservico',
-    result: 'Aproveitamento maior dos horarios de pico',
+    role: 'Coordenador, Clínica Multisserviço',
+    result: 'Aproveitamento maior dos horários de pico',
   },
 ];
 
-export const customerSegments: string[] = ['Salao de beleza', 'Clinica de estetica', 'Barbearia premium', 'Spa urbano'];
+export const customerSegments: string[] = ['Salão de beleza', 'Clínica de estética', 'Barbearia premium', 'Spa urbano'];
 
 export const demoSteps: DemoStepSimple[] = [
   {
@@ -138,7 +138,7 @@ export const demoSteps: DemoStepSimple[] = [
       { author: 'Cliente', text: 'Terça 16h30!' },
       { author: 'Ritmo', text: 'Confirmado! Terça 16h30, Limpeza de Pele com a Jessica na unidade Centro 💜' },
     ],
-    ctaLabel: 'Simular ajuste de horario',
+    ctaLabel: 'Simular ajuste de horário',
   },
   {
     id: 'confirmacao',
@@ -153,7 +153,7 @@ export const demoSteps: DemoStepSimple[] = [
       { author: 'Cliente', text: 'Segunda 17h!' },
       { author: 'Ritmo', text: 'Reagendado! Segunda 17h com a Jessica. Até lá! 😊' },
     ],
-    ctaLabel: 'Simular confirmacao automatica',
+    ctaLabel: 'Simular confirmação automática',
   },
 ];
 
@@ -207,7 +207,7 @@ export const offerData: OfferData = {
   benefits: [
     'Menos tempo perdido com mensagens repetidas',
     'Mais horários confirmados e menos faltas',
-    'Mais velocidade de resposta no canal que mais recebe contato',
+    'Resposta mais rápida no principal canal de contato',
     'Base pronta para crescer em várias unidades',
   ],
   phases: [
@@ -219,12 +219,12 @@ export const offerData: OfferData = {
     {
       phase: 'Fase 2',
       title: 'WhatsApp ativo',
-      description: 'Ativar atendimento, lembretes e rotina para chamar clientes de volta.',
+      description: 'Ativar atendimento, lembretes e reativação de clientes inativos.',
     },
     {
       phase: 'Fase 3',
       title: 'Ajustes finos',
-      description: 'Refinar mensagens e horários com base nos indicadores da operação.',
+      description: 'Refinar mensagens e horários com base nos indicadores reais.',
     },
   ],
   ctaLabel: 'Ver plano no WhatsApp',
@@ -237,7 +237,7 @@ export const pricingPlans: PricingPlan[] = [
     name: 'Starter',
     originalPrice: 'R$ 480',
     currentPrice: 'R$ 319',
-    billing: '/mes',
+    billing: '/mês',
     description: 'Para organizar o primeiro fluxo de agendamento.',
     fitLabel: 'Ideal para operação menor ou em fase inicial.',
     features: ['1 número de WhatsApp', 'Agendamento + confirmação', 'Relatórios essenciais'],
@@ -248,7 +248,7 @@ export const pricingPlans: PricingPlan[] = [
     name: 'Growth',
     originalPrice: 'R$ 870',
     currentPrice: 'R$ 697',
-    billing: '/mes',
+    billing: '/mês',
     description: 'Para equipes com maior volume de atendimento.',
     fitLabel: 'Ideal para reduzir faltas e ocupar mais horários com consistência.',
     features: ['Equipe multiprofissional', 'Campanhas para chamar clientes de volta', 'Onboarding assistido'],
@@ -300,7 +300,7 @@ export const faqData: FaqData = {
       id: 'faq-suporte',
       question: 'Existe suporte durante a implantação?',
       answer:
-        'Sim. Você recebe acompanhamento em cada etapa para equipe adotar o processo com tranquilidade.',
+        'Sim. Você recebe acompanhamento em cada etapa para a equipe adotar o processo com tranquilidade.',
     },
   ],
   ctaLabel: 'Ainda com dúvida? Falar no WhatsApp',
@@ -312,7 +312,7 @@ export const finalCtaData = {
   subtitle:
     'Receba um plano personalizado para sua operação e veja como a Ritmo pode ajudar a manter sua agenda cheia!',
   supportingText:
-    'Implantação por fases, sem parar sua rotina. Primeiros resultados visíveis em 2-3 semanas.',
+    'Início gradual, sem interromper sua rotina. Primeiros resultados visíveis em 2–3 semanas.',
   secondaryCtaLabel: 'Criar conta grátis',
 };
 

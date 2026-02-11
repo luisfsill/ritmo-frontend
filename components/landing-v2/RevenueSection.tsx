@@ -80,7 +80,7 @@ export const RevenueSection = memo(function RevenueSection({
           ))}
         </div>
 
-        <div className={styles.scenarioTabs} role="tablist" aria-label="Cenarios de receita">
+        <div className={styles.scenarioTabs} role="tablist" aria-label="Cenários de receita">
           {revenueScenarios.map((scenario, index) => {
             const isActive = activeIndex === index;
             return (
@@ -127,7 +127,7 @@ export const RevenueSection = memo(function RevenueSection({
                   showArrow
                   className={styles.cta}
                 >
-                  Quero essa automacao
+                  Quero essa automação
                 </WhatsAppButton>
               </div>
 

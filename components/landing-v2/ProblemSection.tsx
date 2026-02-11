@@ -46,7 +46,7 @@ export const ProblemSection = memo(function ProblemSection() {
             {renderEmphasis('Quando a agenda **perde ritmo**, o faturamento sente primeiro')}
           </h2>
           <p className={styles.subtitle}>
-            {renderEmphasis('Tres frentes criticas que travam **operacao** e crescimento no dia a dia.')}
+            {renderEmphasis('Três frentes críticas que travam **operação** e crescimento no dia a dia.')}
           </p>
         </MotionDiv>
 

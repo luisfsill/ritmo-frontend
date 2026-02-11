@@ -43,10 +43,10 @@ export const SolutionSection = memo(function SolutionSection() {
           transition={{ duration: reduceMotion ? 0 : 0.34, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2 className={styles.title}>
-            {renderEmphasis('Um fluxo unico para **captar**, **confirmar** e **reter**')}
+            {renderEmphasis('Um fluxo único para **captar**, **confirmar** e **reter**')}
           </h2>
           <p className={styles.subtitle}>
-            {renderEmphasis('A operacao segue uma sequencia previsivel para **reduzir ruido** e **aumentar conversao**.')}
+            {renderEmphasis('A operação segue uma sequência previsível para **reduzir ruído** e **aumentar conversão**.')}
           </p>
         </MotionDiv>
 

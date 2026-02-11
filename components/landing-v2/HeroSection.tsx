@@ -61,7 +61,7 @@ export const HeroSection = memo(function HeroSection({
               Falar no WhatsApp
             </WhatsAppButton>
             <Link href={registerHref} className={styles.secondaryCta} onClick={onRegisterClick}>
-              Criar conta gratis
+              Criar conta grátis
               <ArrowRight size={18} />
             </Link>
           </MotionDiv>

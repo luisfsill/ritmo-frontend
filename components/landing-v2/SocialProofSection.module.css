@@ -1,7 +1,9 @@
 .section {
   padding: var(--space-16) var(--space-6);
   scroll-margin-top: calc(var(--header-height) + var(--space-6));
-  background: color-mix(in oklab, var(--landing-surface) 28%, transparent);
+  background: var(--landing-surface);
+  border-top: 1px solid var(--landing-border);
+  border-bottom: 1px solid var(--landing-border);
 }
 
 .inner {

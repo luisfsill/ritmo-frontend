@@ -1,5 +1,6 @@
 export type LandingV2SectionId =
   | 'hero'
+  | 'challenges'
   | 'problem'
   | 'solution'
   | 'demo'

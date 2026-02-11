@@ -47,7 +47,7 @@ export const PricingSection = memo(function PricingSection({ whatsappHrefByPlanI
           viewport={viewportRepeat}
           transition={{ duration: reduceMotion ? 0 : 0.34, ease: [0.22, 1, 0.36, 1] }}
         >
-          <h2 className={styles.title}>{renderEmphasis('Planos simples para **escolher rapido**')}</h2>
+          <h2 className={styles.title}>{renderEmphasis('Planos simples para **escolher rápido**')}</h2>
           <p className={styles.subtitle}>
             {renderEmphasis('Compare recursos, escolha o plano e fale com o time no WhatsApp para **ativar**.')}
           </p>

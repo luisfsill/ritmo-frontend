@@ -73,7 +73,7 @@ export const DemoSection = memo(function DemoSection({
           <p className={styles.subtitle}>Veja como a conversa flui <strong>sozinha</strong>: da primeira mensagem até a confirmação, <strong>sem sua equipe parar</strong> o que está fazendo.</p>
         </MotionDiv>
 
-        <div className={styles.stepRail} role="tablist" aria-label="Etapas da demonstracao">
+        <div className={styles.stepRail} role="tablist" aria-label="Etapas da demonstração">
           {demoSteps.map((step, index) => {
             const isActive = activeIndex === index;
             return (
@@ -117,7 +117,7 @@ export const DemoSection = memo(function DemoSection({
                 <article className={`${styles.summaryItem} ${styles.summaryUser}`}>
                   <div className={styles.summaryHeader}>
                     <span className={styles.summaryIcon}><User size={15} /></span>
-                    <h3>Situacao do cliente</h3>
+                    <h3>Situação do cliente</h3>
                   </div>
                   <p dangerouslySetInnerHTML={{ __html: current.userSituation }} />
                 </article>
@@ -131,7 +131,7 @@ export const DemoSection = memo(function DemoSection({
                 <article className={`${styles.summaryItem} ${styles.summaryOutcome}`}>
                   <div className={styles.summaryHeader}>
                     <span className={styles.summaryIcon}><CheckCircle2 size={15} /></span>
-                    <h3>Resultado pratico</h3>
+                    <h3>Resultado prático</h3>
                   </div>
                   <p dangerouslySetInnerHTML={{ __html: current.outcome }} />
                 </article>
@@ -176,7 +176,7 @@ export const DemoSection = memo(function DemoSection({
                 {current.ctaLabel}
               </WhatsAppButton>
               <Link href={registerHref} className={styles.secondaryCta} onClick={onRegisterClick}>
-                Criar conta gratis
+                Criar conta grátis
               </Link>
             </div>
           </MotionDiv>

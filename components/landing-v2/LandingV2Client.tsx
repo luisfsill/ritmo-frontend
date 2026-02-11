@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { buildLandingWhatsappUrl, type LandingWhatsappResult } from '@/lib/landing-whatsapp';
 import { defaultWhatsappMessage, demoSteps, pricingPlans } from './content';
+import { ChallengesSection } from './ChallengesSection';
 import { DemoSection } from './DemoSection';
 import { FaqSection } from './FaqSection';
 import { FinalCtaSection } from './FinalCtaSection';
@@ -11,9 +12,9 @@ import { LandingV2Footer } from './LandingV2Footer';
 import { LandingV2Header } from './LandingV2Header';
 import { OfferSection } from './OfferSection';
 import { PricingSection } from './PricingSection';
-import { ProblemSection } from './ProblemSection';
 import { RevenueSection } from './RevenueSection';
-import { SolutionSection } from './SolutionSection';
+import { SectionDivider } from './SectionDivider';
+import { SocialProofSection } from './SocialProofSection';
 import { LandingV2SectionId } from './types';
 import { useAnalytics, useSectionTracking, useScrollDepthTracking, useMobileMenu } from './hooks';
 import { SkipLink } from './SkipLink';
@@ -86,9 +87,9 @@ export function LandingV2Client() {
   const sectionTargets = useMemo(
     () => [
       { domId: 'hero', section: 'hero' as const },
-      { domId: 'problem', section: 'problem' as const },
-      { domId: 'solution', section: 'solution' as const },
+      { domId: 'challenges', section: 'challenges' as const },
       { domId: 'demo', section: 'demo' as const },
+      { domId: 'social-proof', section: 'social_proof' as const },
       { domId: 'revenue', section: 'revenue' as const },
       { domId: 'offer', section: 'offer' as const },
       { domId: 'pricing', section: 'pricing' as const },
@@ -222,9 +223,10 @@ export function LandingV2Client() {
             onWhatsappClick={handleHeroWhatsappClick}
             onRegisterClick={handleHeroRegisterClick}
           />
-          <ProblemSection />
-          <SolutionSection />
+          <ChallengesSection />
         </div>
+
+        <SectionDivider />
 
         <div className={`${styles.storyBlock} ${styles.storyBlockProof}`}>
           <DemoSection
@@ -235,11 +237,14 @@ export function LandingV2Client() {
             onStepViewed={handleDemoStepViewed}
             onStepCtaClick={handleDemoStepCtaClick}
           />
+          <SocialProofSection />
           <RevenueSection
             whatsappHref={getWhatsappConfig('revenue_whatsapp').href}
             onWhatsappClick={handleRevenueWhatsappClick}
           />
         </div>
+
+        <SectionDivider />
 
         <div className={`${styles.storyBlock} ${styles.storyBlockDecision}`}>
           <OfferSection

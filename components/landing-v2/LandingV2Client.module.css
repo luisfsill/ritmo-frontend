@@ -80,10 +80,16 @@
 
 /* Removed complex pseudo-elements for cleaner aesthetic */
 
-.storyBlockIntro,
-.storyBlockProof,
+.storyBlockIntro {
+  /* White/default background */
+}
+
+.storyBlockProof {
+  background: var(--landing-surface-muted);
+}
+
 .storyBlockDecision {
-  /* Unified clean treatment */
+  /* White/default background */
 }
 
 @media (max-width: 760px) {

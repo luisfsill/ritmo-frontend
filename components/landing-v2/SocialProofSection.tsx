@@ -40,11 +40,11 @@ export const SocialProofSection = memo(function SocialProofSection() {
           transition={{ duration: reduceMotion ? 0 : 0.34, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2 className={styles.title}>
-            {renderEmphasis('Resultados **observaveis** com leitura **rapida**')}
+            {renderEmphasis('Resultados **observáveis** com leitura **rápida**')}
           </h2>
           <p className={styles.subtitle}>
             {renderEmphasis(
-              'Primeiro a visao executiva, depois os **casos reais** de aplicacao em operacoes de servicos.',
+              'Primeiro a visão executiva, depois os **casos reais** de aplicação em operações de serviços.',
             )}
           </p>
         </MotionDiv>
