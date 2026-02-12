@@ -74,6 +74,7 @@ export default function SettingsPage() {
     const [whatsappStatus, setWhatsappStatus] = useState<
         'connected' | 'disconnected' | 'loading' | 'pending' | 'error' | 'config_required' | 'rollout'
     >('loading');
+    const [whatsappWebhookEnabled, setWhatsappWebhookEnabled] = useState<boolean | null>(null);
     const [whatsappStatusHint, setWhatsappStatusHint] = useState<string | null>(null);
     const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus>({ connected: false });
     const [googleCalendarLoading, setGoogleCalendarLoading] = useState(false);
@@ -109,6 +110,7 @@ export default function SettingsPage() {
                 try {
                     const capabilities = await uazapi.getCapabilities();
                     if (!capabilities.enabled) {
+                        setWhatsappWebhookEnabled(null);
                         if (capabilities.reason === 'canary_disabled') {
                             setWhatsappStatus('rollout');
                             setWhatsappStatusHint('Disponível em rollout gradual para o seu tenant.');
@@ -118,6 +120,7 @@ export default function SettingsPage() {
                         }
                     } else {
                         const integrationStatus = await uazapi.getIntegrationStatus();
+                        setWhatsappWebhookEnabled(integrationStatus.webhook_enabled ?? null);
                         if (!integrationStatus.has_token) {
                             setWhatsappStatus('disconnected');
                             setWhatsappStatusHint(null);
@@ -142,6 +145,7 @@ export default function SettingsPage() {
                                 : '');
                     if (message.includes('uazapi_token_missing')) {
                         setWhatsappStatus('disconnected');
+                        setWhatsappWebhookEnabled(null);
                         setWhatsappStatusHint(null);
                     } else if (
                         message.includes('missing webhook connection') ||
@@ -149,9 +153,11 @@ export default function SettingsPage() {
                         message.includes('uazapi_connection_not_configured')
                     ) {
                         setWhatsappStatus('config_required');
+                        setWhatsappWebhookEnabled(null);
                         setWhatsappStatusHint('A autenticação do webhook está inválida. Registre o webhook novamente.');
                     } else {
                         setWhatsappStatus('error');
+                        setWhatsappWebhookEnabled(null);
                         setWhatsappStatusHint(null);
                     }
                 }
@@ -692,6 +698,17 @@ export default function SettingsPage() {
                                     {whatsappStatusHint && (
                                         <span className={styles.integrationStatusLoading}>{whatsappStatusHint}</span>
                                     )}
+                                    <span
+                                        className={
+                                            whatsappWebhookEnabled === true
+                                                ? styles.integrationStatus
+                                                : whatsappWebhookEnabled === false
+                                                    ? styles.integrationStatusDisconnected
+                                                    : styles.integrationStatusLoading
+                                        }
+                                    >
+                                        Webhook: {whatsappWebhookEnabled === true ? 'Habilitado' : whatsappWebhookEnabled === false ? 'Desabilitado' : 'Desconhecido'}
+                                    </span>
                                 </div>
                                 <Button 
                                     variant={whatsappStatus === 'connected' ? 'secondary' : 'primary'} 
