@@ -21,17 +21,22 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProviderProps) {
     const [theme, setThemeState] = useState<Theme>(defaultTheme);
-    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(
+        defaultTheme === 'dark' ? 'dark' : 'light'
+    );
     const [mounted, setMounted] = useState(false);
 
     // Load saved theme from localStorage
     useEffect(() => {
         setMounted(true);
         const savedTheme = localStorage.getItem('ritmo_theme') as Theme | null;
-        if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
-            setThemeState(savedTheme);
-        }
-    }, []);
+        const nextTheme: Theme =
+            savedTheme && ['light', 'dark', 'system'].includes(savedTheme)
+                ? savedTheme
+                : defaultTheme;
+        setThemeState(nextTheme);
+        localStorage.setItem('ritmo_theme', nextTheme);
+    }, [defaultTheme]);
 
     // Handle theme changes and system preference
     useEffect(() => {
@@ -54,9 +59,9 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
 
             mediaQuery.addEventListener('change', handler);
             return () => mediaQuery.removeEventListener('change', handler);
-        } else {
-            applyTheme(theme);
         }
+
+        applyTheme(theme);
     }, [theme, mounted]);
 
     const setTheme = (newTheme: Theme) => {
@@ -65,8 +70,8 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
     };
 
     const toggleTheme = () => {
-        const newTheme = resolvedTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
+        const nextTheme = resolvedTheme === 'light' ? 'dark' : 'light';
+        setTheme(nextTheme);
     };
 
     return (

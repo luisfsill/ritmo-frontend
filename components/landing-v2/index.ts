@@ -12,7 +12,6 @@ export * from './SolutionSection';
 export * from './SocialProofSection';
 export * from './DemoSection';
 export * from './RevenueSection';
-export * from './OfferSection';
 export * from './PricingSection';
 export * from './FaqSection';
 export * from './FinalCtaSection';

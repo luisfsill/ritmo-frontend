@@ -34,18 +34,11 @@
   border: 1px solid var(--landing-border);
   background: var(--landing-surface);
   padding: var(--space-6);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--landing-accent) 8%, transparent);
   display: grid;
   align-content: start;
   gap: var(--space-3);
   will-change: transform, opacity;
-  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
-}
-
-.card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 50px rgba(0, 102, 255, 0.15);
-  border-color: var(--landing-accent);
 }
 
 .cardHeader {
@@ -56,27 +49,25 @@
 
 .step {
   border-radius: var(--radius-full);
-  border: 2px solid var(--landing-accent);
-  background: linear-gradient(135deg, var(--landing-accent-soft) 0%, rgba(0, 102, 255, 0.05) 100%);
-  color: var(--landing-accent);
+  border: 1px solid color-mix(in oklab, var(--landing-accent) 40%, var(--landing-border));
+  background: color-mix(in oklab, var(--landing-accent) 12%, var(--landing-surface));
+  color: var(--landing-text);
   font-size: var(--text-xs);
-  font-weight: var(--font-bold);
+  font-weight: var(--font-semibold);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  padding: 4px 12px;
-  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.2);
+  padding: 4px 9px;
 }
 
 .iconWrap {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--landing-accent-soft) 0%, rgba(0, 102, 255, 0.15) 100%);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--landing-accent) 18%, transparent);
   color: var(--landing-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15);
 }
 
 .card h3 {

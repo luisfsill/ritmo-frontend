@@ -31,40 +31,23 @@
 
 .card {
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  background: linear-gradient(135deg, rgba(254, 242, 242, 0.9) 0%, rgba(254, 226, 226, 0.6) 100%);
+  border: 1px solid color-mix(in oklab, #dc2626 18%, var(--landing-border));
+  background: color-mix(in oklab, var(--landing-surface) 92%, #dc2626 8%);
   padding: var(--space-6);
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.12);
+  box-shadow: 0 8px 18px color-mix(in oklab, #dc2626 8%, transparent);
   will-change: transform, opacity;
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(239, 68, 68, 0.18);
-}
-
-[data-theme='dark'] .card {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%);
-  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .iconWrap {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
-  color: #dc2626;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, #dc2626 14%, transparent);
+  color: #f87171;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-3);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-}
-
-[data-theme='dark'] .iconWrap {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.2) 0%, rgba(248, 113, 113, 0.1) 100%);
-  color: #f87171;
 }
 
 .card h3 {

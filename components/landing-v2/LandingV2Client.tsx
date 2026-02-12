@@ -10,7 +10,6 @@ import { FinalCtaSection } from './FinalCtaSection';
 import { HeroSection } from './HeroSection';
 import { LandingV2Footer } from './LandingV2Footer';
 import { LandingV2Header } from './LandingV2Header';
-import { OfferSection } from './OfferSection';
 import { PricingSection } from './PricingSection';
 import { RevenueSection } from './RevenueSection';
 import { SectionDivider } from './SectionDivider';
@@ -55,7 +54,6 @@ export function LandingV2Client() {
       header_mobile_whatsapp: buildConfig('Vim pelo botao do menu mobile.'),
       hero_whatsapp: buildConfig('Vim do botao principal da secao inicial.'),
       revenue_whatsapp: buildConfig('Vim da secao de receita e agenda cheia.'),
-      offer_whatsapp: buildConfig('Vim da secao de implantacao guiada.'),
       faq_whatsapp: buildConfig('Vim da secao de perguntas frequentes.'),
       final_whatsapp: buildConfig('Vim do botao final da pagina.'),
     };
@@ -91,7 +89,6 @@ export function LandingV2Client() {
       { domId: 'demo', section: 'demo' as const },
       { domId: 'social-proof', section: 'social_proof' as const },
       { domId: 'revenue', section: 'revenue' as const },
-      { domId: 'offer', section: 'offer' as const },
       { domId: 'pricing', section: 'pricing' as const },
       { domId: 'faq', section: 'faq' as const },
       { domId: 'final-cta', section: 'final_cta' as const },
@@ -141,12 +138,6 @@ export function LandingV2Client() {
   const handleDemoRegisterClick = useCallback(() => {
     trackRegisterClick('demo_secondary', 'demo_register', registerHref);
   }, [trackRegisterClick]);
-
-  const handleOfferClick = useCallback(() => {
-    const buttonId = 'offer_whatsapp';
-    const target = getWhatsappConfig(buttonId);
-    trackWhatsappClick('offer', buttonId, target.href, target.isFallback);
-  }, [getWhatsappConfig, trackWhatsappClick]);
 
   const handleRevenueWhatsappClick = useCallback(() => {
     const buttonId = 'revenue_whatsapp';
@@ -247,11 +238,6 @@ export function LandingV2Client() {
         <SectionDivider />
 
         <div className={`${styles.storyBlock} ${styles.storyBlockDecision}`}>
-          <OfferSection
-            whatsappHref={getWhatsappConfig('offer_whatsapp').href}
-            onWhatsappClick={handleOfferClick}
-          />
-
           <PricingSection
             whatsappHrefByPlanId={whatsappConfig.pricingWhatsappHrefByPlanId}
             onPlanClick={handlePlanClick}

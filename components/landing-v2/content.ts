@@ -2,7 +2,6 @@ import {
   DemoStepSimple,
   FaqData,
   HeroMetric,
-  OfferData,
   PricingPlan,
   ProblemItem,
   RevenueScenario,
@@ -186,38 +185,6 @@ export const revenueScenarios: RevenueScenario[] = [
     metricLabel: 'de ocupação semanal com preenchimento proativo',
   },
 ];
-
-export const offerData: OfferData = {
-  kicker: 'Implantação guiada',
-  title: 'Comece em fases sem parar sua operação',
-  description:
-    'A Ritmo entra aos poucos no seu dia a dia para gerar resultado rápido, com segurança para sua equipe.',
-  benefits: [
-    'Menos tempo perdido com mensagens repetidas',
-    'Mais horários confirmados e menos faltas',
-    'Resposta mais rápida no principal canal de contato',
-    'Base pronta para crescer em várias unidades',
-  ],
-  phases: [
-    {
-      phase: 'Fase 1',
-      title: 'Agenda base',
-      description: 'Configurar serviços, equipe e disponibilidade principal.',
-    },
-    {
-      phase: 'Fase 2',
-      title: 'WhatsApp ativo',
-      description: 'Ativar atendimento, lembretes e reativação de clientes inativos.',
-    },
-    {
-      phase: 'Fase 3',
-      title: 'Ajustes finos',
-      description: 'Refinar mensagens e horários com base nos indicadores reais.',
-    },
-  ],
-  ctaLabel: 'Ver plano no WhatsApp',
-  ctaSupport: 'Conversa curta com orientação para o seu tipo de operação.',
-};
 
 export const pricingPlans: PricingPlan[] = [
   {

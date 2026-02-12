@@ -6,7 +6,6 @@ export type LandingV2SectionId =
   | 'demo'
   | 'revenue'
   | 'social_proof'
-  | 'offer'
   | 'pricing'
   | 'faq'
   | 'final_cta';
@@ -16,7 +15,6 @@ export type LandingV2CtaOrigin =
   | 'hero_primary'
   | 'demo_step'
   | 'revenue'
-  | 'offer'
   | 'pricing'
   | 'faq'
   | 'final_cta';
@@ -131,22 +129,6 @@ export type PricingPlan = {
   features: string[];
   ctaLabel: string;
   isRecommended?: boolean;
-};
-
-export type OfferPhase = {
-  phase: string;
-  title: string;
-  description: string;
-};
-
-export type OfferData = {
-  kicker: string;
-  title: string;
-  description: string;
-  benefits: string[];
-  phases: OfferPhase[];
-  ctaLabel: string;
-  ctaSupport: string;
 };
 
 export type FaqItem = {
