@@ -9,7 +9,7 @@ import {
 } from './types';
 
 export const heroData = {
-  badge: 'Agendamento pelo WhatsApp para salões e clínicas',
+  badge: 'Sua agenda no piloto automático',
   title: 'Atenda clientes em <strong>segundos</strong> e mantenha sua agenda <strong>cheia</strong>',
   subtitle:
     'A Ritmo responde no WhatsApp 24h, sugere horários válidos e confirma presença — sem sobrecarregar sua equipe.',
@@ -37,16 +37,16 @@ export const heroData = {
 
 export const problemItems: ProblemItem[] = [
   {
-    title: 'A equipe interrompe o trabalho toda hora para responder mensagem',
-    description: 'O atendimento vira distração contínua: explicar horário, preço e remarcação.',
+    title: 'Demandas operacionais constantemente interrompidas por atendimentos via mensagem',
+    description: 'Grande parte das interações envolve dúvidas sobre horário, preço e remarcação, reduzindo o foco nas atividades principais.',
   },
   {
-    title: 'Horários vazios por falta de confirmação',
-    description: 'Sem lembrete automático, muitas pessoas esquecem o atendimento.',
+    title: 'Horários ociosos por falta de confirmação estruturada',
+    description: 'Sem lembretes automatizados ou processo formal de validação, há aumento de faltas e remarcações tardias.',
   },
   {
-    title: 'Agenda cheia em uma semana e vazia na outra',
-    description: 'Fica difícil manter ritmo quando não existe processo claro para confirmar e remarcar.',
+    title: 'Distribuição irregular de demanda ao longo das semanas',
+    description: 'A ausência de fluxo padronizado de confirmação e remarcação gera picos de sobrecarga seguidos de períodos de baixa ocupação.',
   },
 ];
 
