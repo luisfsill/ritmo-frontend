@@ -76,6 +76,7 @@ function userFacingActionForBlocker(blocker: string): string | null {
     case 'missing_uazapi_token':
       return 'Crie uma nova instância e faça a conexão novamente.';
     case 'webhook_not_registered':
+    case 'webhook_disabled':
     case 'missing_webhook_url':
     case 'webhook_url_localhost':
       return 'Clique em "Registrar Webhook" para concluir a configuração de recebimento de mensagens.';
@@ -120,6 +121,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   const [state, setState] = useState<ConnectionState>('loading');
   const [instance, setInstance] = useState<UazapiInstance | null>(null);
   const [statusData, setStatusData] = useState<UazapiStatus | null>(null);
+  const [integrationStatus, setIntegrationStatus] = useState<UazapiIntegrationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [integrationWarning, setIntegrationWarning] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<PendingCommandResponse | null>(null);
@@ -199,8 +201,10 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
         const connected = Boolean(status?.status?.connected) && Boolean(status?.status?.loggedIn);
         try {
           const integrationStatus = await uazapi.getIntegrationStatus();
+          setIntegrationStatus(integrationStatus);
           setIntegrationWarning(buildIntegrationWarning(connected, integrationStatus));
         } catch {
+          setIntegrationStatus(null);
           setIntegrationWarning(null);
         }
         return;
@@ -210,11 +214,13 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           setState('no-instance');
           setInstance(null);
           setStatusData(null);
+          setIntegrationStatus(null);
           setIntegrationWarning(null);
           return;
         }
 
         setState('error');
+        setIntegrationStatus(null);
         setIntegrationWarning(null);
         setError(humanizeUazapiError(message));
         return;
@@ -226,6 +232,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
     if (isOpen) {
       setState('loading');
       setBlockedReason(null);
+      setIntegrationStatus(null);
       setIntegrationWarning(null);
       void (async () => {
         try {
@@ -299,11 +306,14 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
           if (connected) {
             try {
               const integrationStatus = await uazapi.getIntegrationStatus();
+              setIntegrationStatus(integrationStatus);
               setIntegrationWarning(buildIntegrationWarning(true, integrationStatus));
             } catch {
+              setIntegrationStatus(null);
               // Keep polling status even if integration endpoint is temporarily unavailable.
             }
           } else {
+            setIntegrationStatus(null);
             setIntegrationWarning(null);
           }
         } catch (err) {
@@ -359,6 +369,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   const applyDeletedState = useCallback(() => {
     setInstance(null);
     setStatusData(null);
+    setIntegrationStatus(null);
     setIntegrationWarning(null);
     setState('no-instance');
     setQrImageSrc(null);
@@ -386,6 +397,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       setIntegrationWarning(
         buildIntegrationWarning(connectedNow, result.data.integration_status, result.data.webhook_error),
       );
+      setIntegrationStatus(result.data.integration_status || null);
 
       setState('connecting');
       setTimeout(() => {
@@ -410,6 +422,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
               return;
             }
           } else {
+            setIntegrationStatus(webhookResult.data.integration_status || null);
             setIntegrationWarning(null);
             await loadInstanceStatus();
             return;
@@ -444,6 +457,7 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       }
 
       setIntegrationWarning(null);
+      setIntegrationStatus(result.data.integration_status || null);
       await loadInstanceStatus();
     } catch (err) {
       setError(humanizeUazapiError(normalizeError(err)));
@@ -537,6 +551,15 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
   if (!isOpen) return null;
 
   const renderContent = () => {
+    const webhookEnabled = integrationStatus?.webhook_enabled;
+    const webhookLabel = webhookEnabled === true ? 'Habilitado' : webhookEnabled === false ? 'Desabilitado' : 'Desconhecido';
+    const webhookBadgeClass =
+      webhookEnabled === true
+        ? styles.webhookEnabled
+        : webhookEnabled === false
+          ? styles.webhookDisabled
+          : styles.webhookUnknown;
+
     if (state === 'loading') {
       return (
         <div className={styles.loading}>
@@ -598,6 +621,9 @@ export function WhatsAppModal({ isOpen, onClose }: WhatsAppModalProps) {
       <>
         <div className={styles.statusSection}>
           {getStatusBadge()}
+          <div className={`${styles.webhookBadge} ${webhookBadgeClass}`}>
+            Webhook: {webhookLabel}
+          </div>
 
           {state === 'connected' && instance && (
             <div className={styles.profileInfo}>
