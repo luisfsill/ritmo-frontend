@@ -93,6 +93,30 @@
   margin-bottom: 1.5rem;
 }
 
+.webhookBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.webhookEnabled {
+  background: rgba(37, 211, 102, 0.12);
+  color: #1f9e4d;
+}
+
+.webhookDisabled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.webhookUnknown {
+  background: rgba(107, 114, 128, 0.12);
+  color: #4b5563;
+}
+
 .statusBadge {
   display: flex;
   align-items: center;
