@@ -88,6 +88,7 @@ export interface UazapiIntegrationStatus {
     | 'missing_uazapi_token'
     | 'missing_webhook_url'
     | 'webhook_not_registered'
+    | 'webhook_disabled'
     | 'webhook_url_localhost'
     | 'agent_worker_disabled'
     | string
@@ -98,6 +99,7 @@ export interface UazapiIntegrationStatus {
   has_base_url: boolean;
   instance_connected: boolean;
   webhook_registered: boolean;
+  webhook_enabled: boolean | null;
   whatsapp_webhook_url: string | null;
   agent_worker_enabled: boolean;
   ready_for_inbound: boolean;
