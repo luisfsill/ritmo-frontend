@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api, setTokens, clearTokens, isAuthenticated, TokenPair, ApiError } from '@/lib/api';
+import { api, setTokens, clearTokens, isAuthenticated, TokenPair, ApiError, logoutSession } from '@/lib/api';
 
 interface User {
     id: string;
@@ -28,7 +28,7 @@ interface AuthContextType {
     isLoading: boolean;
     isLoggedIn: boolean;
     login: (email: string, password: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     error: string | null;
 }
@@ -50,6 +50,7 @@ const parseJwt = (token: string): {
     role?: string;
     staff_id?: string;
     staffId?: string;
+    exp?: number;
 } | null => {
     try {
         const base64Url = token.split('.')[1];
@@ -64,6 +65,12 @@ const parseJwt = (token: string): {
     } catch {
         return null;
     }
+};
+
+const isTokenPayloadExpired = (exp?: number): boolean => {
+    if (typeof exp !== 'number') return false;
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    return exp <= nowInSeconds + 30;
 };
 
 export function AuthProvider({ children }: AuthProviderProps) {
@@ -96,6 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const payload = parseJwt(token);
         if (!payload) return null;
+        if (isTokenPayloadExpired(payload.exp)) return null;
 
         // Tenta pegar o nome de várias fontes: name, full_name, ou extrai do email
         const userName = payload.name || payload.full_name || payload.email?.split('@')[0] || 'Usuário';
@@ -175,7 +183,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     setUser(userData);
                 } else {
                     // Último fallback: usar dados básicos do email
-                    setUser({ id: '', email, name: email.split('@')[0], tenant_id: '' });
+                    clearTokens();
+                    throw new Error('Nao foi possivel validar a sessao apos o login. Tente novamente.');
                 }
             }
         } catch (err) {
@@ -188,18 +197,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
             
             setError(errorMessage);
-            setIsLoading(false);
             
             // Re-throw com status preservado
             const errorToThrow = new Error(errorMessage) as Error & { status?: number };
             errorToThrow.status = apiError.status;
             throw errorToThrow;
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
-    const logout = () => {
-        clearTokens();
+    const logout = async () => {
+        await logoutSession();
         setUser(null);
         setError(null);
     };

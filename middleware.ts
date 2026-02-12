@@ -36,12 +36,44 @@ function isPublicBookingSlug(pathname: string): boolean {
     return slugPattern.test(segment);
 }
 
+function looksLikeJwt(token: string): boolean {
+    return token.split('.').length === 3;
+}
+
+function decodeBase64Url(base64Url: string): string {
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    return atob(padded);
+}
+
+function isExpiredJwt(token: string, skewSeconds = 30): boolean {
+    if (!looksLikeJwt(token)) return false;
+
+    try {
+        const payloadRaw = token.split('.')[1];
+        if (!payloadRaw) return true;
+        const payload = JSON.parse(decodeBase64Url(payloadRaw)) as { exp?: number };
+        if (typeof payload.exp !== 'number') return true;
+
+        const nowInSeconds = Math.floor(Date.now() / 1000);
+        return payload.exp <= nowInSeconds + skewSeconds;
+    } catch {
+        return true;
+    }
+}
+
+function clearAuthCookies(response: NextResponse): void {
+    response.cookies.set('ritmo_access_token', '', { path: '/', maxAge: 0 });
+    response.cookies.set('ritmo_refresh_token', '', { path: '/', maxAge: 0 });
+}
+
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Get token from cookies (localStorage isn't available in middleware)
     const token = request.cookies.get('ritmo_access_token')?.value;
-    const isAuthenticated = !!token;
+    const tokenExpired = !!token && isExpiredJwt(token);
+    const isAuthenticated = !!token && !tokenExpired;
 
     // Check if this is a public booking slug (e.g., /stefaniamakke)
     const isBookingSlug = isPublicBookingSlug(pathname);
@@ -71,7 +103,17 @@ export function middleware(request: NextRequest) {
     if (!isAuthenticated && !isPublicRoute) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('redirect', pathname);
-        return NextResponse.redirect(loginUrl);
+        const response = NextResponse.redirect(loginUrl);
+        if (tokenExpired) {
+            clearAuthCookies(response);
+        }
+        return response;
+    }
+
+    if (tokenExpired) {
+        const response = NextResponse.next();
+        clearAuthCookies(response);
+        return response;
     }
 
     return NextResponse.next();

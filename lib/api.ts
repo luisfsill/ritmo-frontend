@@ -29,6 +29,40 @@ export interface TokenPair {
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 
+interface JwtPayload {
+  exp?: number;
+}
+
+function looksLikeJwt(token: string): boolean {
+  return token.split('.').length === 3;
+}
+
+function decodeBase64Url(base64Url: string): string {
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  return atob(padded);
+}
+
+function parseJwtPayload(token: string): JwtPayload | null {
+  try {
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return null;
+    return JSON.parse(decodeBase64Url(payloadPart)) as JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function isTokenExpired(token: string, skewSeconds = 30): boolean {
+  if (!looksLikeJwt(token)) return false;
+
+  const payload = parseJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return payload.exp <= nowInSeconds + skewSeconds;
+}
+
 export function setTokens(tokens: TokenPair) {
   accessToken = tokens.access_token;
   refreshToken = tokens.refresh_token;
@@ -80,6 +114,26 @@ export function clearTokens() {
 
 export function isAuthenticated(): boolean {
   return !!getAccessToken();
+}
+
+export async function logoutSession(): Promise<void> {
+  const currentRefreshToken = getRefreshToken();
+
+  try {
+    if (API_BASE_URL && currentRefreshToken) {
+      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: currentRefreshToken }),
+      });
+    }
+  } catch {
+    // Ignore logout errors and always clear local session
+  } finally {
+    clearTokens();
+  }
 }
 
 // Helper para verificar se está em modo demo

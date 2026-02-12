@@ -56,9 +56,9 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
     const isSystemAdmin = isDev || SYSTEM_ADMINS.includes(user?.email || '');
 
-    const handleLogout = () => {
-        logout();
-        router.push('/');
+    const handleLogout = async () => {
+        await logout();
+        router.push('/login');
     };
 
     useEffect(() => {
