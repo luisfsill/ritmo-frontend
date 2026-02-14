@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, ReactNode } from 'react';
+import { useEffect, useId, useRef, ReactNode, Children, isValidElement } from 'react';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
@@ -123,6 +123,17 @@ export function Modal({
 
     if (!isOpen) return null;
 
+    // Separate ModalFooter from other children so footer stays fixed outside scrollable area
+    const footerElements: ReactNode[] = [];
+    const contentElements: ReactNode[] = [];
+    Children.forEach(children, (child) => {
+        if (isValidElement(child) && child.type === ModalFooter) {
+            footerElements.push(child);
+        } else {
+            contentElements.push(child);
+        }
+    });
+
     const modal = (
         <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
             <div
@@ -142,8 +153,9 @@ export function Modal({
                     )}
                 </div>
                 <div className={styles.content}>
-                    {children}
+                    {contentElements}
                 </div>
+                {footerElements}
             </div>
         </div>
     );

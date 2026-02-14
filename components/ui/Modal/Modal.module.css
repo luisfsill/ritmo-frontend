@@ -31,7 +31,8 @@
 .modal {
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - var(--space-8));
+    height: min(calc(100vh - var(--space-8)), 90vh);
+    overflow: hidden;
     background-color: var(--color-bg-elevated);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-xl);
@@ -40,7 +41,7 @@
 
 @media (max-width: 480px) {
     .modal {
-        max-height: calc(100vh - var(--space-6));
+        height: calc(100vh - var(--space-6));
         border-radius: var(--radius-xl) var(--radius-xl) 0 0;
         animation: slideUp 0.2s ease-out;
     }
@@ -86,6 +87,7 @@
 }
 
 .header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -125,9 +127,11 @@
 }
 
 .content {
-    flex: 1;
+    height: 0;
+    flex-grow: 1;
     padding: var(--space-5);
     overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -138,6 +142,7 @@
 }
 
 .footer {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;

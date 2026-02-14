@@ -130,6 +130,7 @@
     -ms-overflow-style: none;
     scroll-behavior: smooth;
     transform-style: preserve-3d; /* Enable 3D transforms */
+    overscroll-behavior: contain;
 }
 
 .wheelList::-webkit-scrollbar {
