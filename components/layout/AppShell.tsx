@@ -12,6 +12,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [apiBanner, setApiBanner] = useState<{ tone: 'warning' | 'error'; message: string } | null>(null);
     const pathname = usePathname();
 
     // Fecha o sidebar ao mudar de página (mobile)
@@ -42,6 +43,41 @@ export function AppShell({ children }: AppShellProps) {
         };
     }, [sidebarOpen]);
 
+    useEffect(() => {
+        const onApiStatus = (event: Event) => {
+            const customEvent = event as CustomEvent<{
+                status?: string;
+                message?: string;
+                retryAfterSeconds?: number | null;
+            }>;
+            const detail = customEvent.detail || {};
+            if (detail.status === 'ok') {
+                setApiBanner(null);
+                return;
+            }
+            if (detail.status === 'rate_limited') {
+                setApiBanner({
+                    tone: 'warning',
+                    message:
+                        detail.retryAfterSeconds && detail.retryAfterSeconds > 0
+                            ? `Limite de uso temporario. Tente novamente em ${detail.retryAfterSeconds}s.`
+                            : (detail.message || 'Limite de requisições atingido.'),
+                });
+                return;
+            }
+            if (detail.status === 'degraded') {
+                setApiBanner({
+                    tone: 'error',
+                    message: detail.message || 'Serviço em degradação. Alguns recursos podem falhar.',
+                });
+            }
+        };
+        window.addEventListener('ritmo:api-status', onApiStatus as EventListener);
+        return () => {
+            window.removeEventListener('ritmo:api-status', onApiStatus as EventListener);
+        };
+    }, []);
+
     return (
         <div className={styles.appShell}>
             {/* Overlay para fechar sidebar em mobile */}
@@ -57,6 +93,11 @@ export function AppShell({ children }: AppShellProps) {
             
             <div className={styles.mainArea}>
                 <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+                {apiBanner && (
+                    <div className={`${styles.apiBanner} ${apiBanner.tone === 'warning' ? styles.warning : styles.error}`}>
+                        {apiBanner.message}
+                    </div>
+                )}
                 <main className={styles.content}>
                     {children}
                 </main>

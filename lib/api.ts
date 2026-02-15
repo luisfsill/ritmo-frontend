@@ -19,6 +19,11 @@ export interface ApiError {
   details?: Record<string, unknown>;
 }
 
+export interface RateLimitError extends ApiError {
+  code: 'rate_limited';
+  retryAfterSeconds?: number;
+}
+
 export interface TokenPair {
   access_token: string;
   refresh_token: string;
@@ -154,13 +159,31 @@ function assertV1Endpoint(endpoint: string): void {
   throw new Error(`Endpoint não-versionado (use /api/v1/...): "${endpoint}"`);
 }
 
+function emitApiStatus(status: 'ok' | 'rate_limited' | 'degraded', message: string, retryAfterSeconds?: number): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent('ritmo:api-status', {
+      detail: {
+        status,
+        message,
+        retryAfterSeconds: retryAfterSeconds ?? null,
+        at: Date.now(),
+      },
+    })
+  );
+}
+
 // Error handling
 function handleApiError(status: number, data: unknown): never {
   let message = 'Ocorreu um erro inesperado';
   let details: Record<string, unknown> | undefined;
+  let retryAfterSeconds: number | undefined;
 
   if (typeof data === 'object' && data !== null) {
     const errorData = data as Record<string, unknown>;
+    if ('retry_after_seconds' in errorData && typeof errorData.retry_after_seconds === 'number') {
+      retryAfterSeconds = Math.max(1, Math.floor(errorData.retry_after_seconds));
+    }
     if ('detail' in errorData) {
       if (typeof errorData.detail === 'string') {
         message = errorData.detail;
@@ -199,6 +222,11 @@ function handleApiError(status: number, data: unknown): never {
     case 422:
       message = message || 'Erro de validação dos dados';
       break;
+    case 429:
+      message = retryAfterSeconds
+        ? `Limite de requisições atingido. Tente novamente em ${retryAfterSeconds}s.`
+        : 'Limite de requisições atingido. Tente novamente em instantes.';
+      break;
     case 500:
       message = 'Erro interno do servidor. Tente novamente.';
       break;
@@ -210,6 +238,11 @@ function handleApiError(status: number, data: unknown): never {
   }
 
   const error: ApiError = { status, message, details };
+  if (status === 429) {
+    emitApiStatus('rate_limited', message, retryAfterSeconds);
+  } else if (status >= 500 || status === 0) {
+    emitApiStatus('degraded', message);
+  }
   throw error;
 }
 
@@ -332,9 +365,11 @@ export async function apiRequest<T>(
 
     // Handle 204 (No Content)
     if (response.status === 204) {
+      emitApiStatus('ok', 'Conexão restabelecida');
       return {} as T;
     }
 
+    emitApiStatus('ok', 'Conexão restabelecida');
     return await response.json() as T;
   } catch (error) {
     // Re-throw API errors
@@ -366,6 +401,7 @@ export async function apiRequest<T>(
       status: 0,
       message: 'O serviço está fora do ar no momento. Contate o administrador.',
     };
+    emitApiStatus('degraded', networkError.message);
     throw networkError;
   }
 }

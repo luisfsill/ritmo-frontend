@@ -8,11 +8,12 @@
   "scripts": {
     "dev": "next dev",
     "dev:network": "next dev -H 0.0.0.0 -p 3000",
-    "build": "next build",
+    "build": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "next typegen && tsc --noEmit --incremental false",
-    "verify": "npm run lint && npm run typecheck && npm run build"
+    "typecheck": "node -e \"const fs=require('fs');for(const p of ['.next/types','.next/dev/types']){fs.rmSync(p,{recursive:true,force:true})}\" && next typegen && tsc --noEmit --incremental false",
+    "verify": "npm run lint && npm run typecheck && npm run build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -28,6 +29,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

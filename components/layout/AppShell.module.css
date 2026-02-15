@@ -31,9 +31,33 @@
     transition: margin-left var(--transition-normal);
 }
 
+.apiBanner {
+    margin: 0 var(--space-6);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.9rem;
+    border: 1px solid transparent;
+}
+
+.warning {
+    background: #fffbeb;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.error {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
 @media (max-width: 768px) {
     .mainArea {
         margin-left: 0;
+    }
+
+    .apiBanner {
+        margin: 0 var(--space-4);
     }
 }
 

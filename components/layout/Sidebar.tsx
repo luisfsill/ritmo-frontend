@@ -12,6 +12,9 @@ import {
     Clock,
     Settings,
     BarChart3,
+    DollarSign,
+    AlertTriangle,
+    Settings2,
     MessageSquare,
     LogOut,
     Shield,
@@ -30,6 +33,9 @@ const menuItems = [
     { href: '/dashboard/clients', label: 'Clientes', icon: UserCircle },
     { href: '/dashboard/conversations', label: 'Conversas', icon: MessageSquare },
     { href: '/dashboard/analytics', label: 'Relatórios', icon: BarChart3 },
+    { href: '/dashboard/pricing', label: 'Preço Dinâmico', icon: DollarSign },
+    { href: '/dashboard/emergency', label: 'Emergência', icon: AlertTriangle },
+    { href: '/dashboard/operations', label: 'Operações', icon: Settings2 },
 ];
 
 const bottomMenuItems = [
