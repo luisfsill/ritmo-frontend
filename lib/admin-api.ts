@@ -53,12 +53,20 @@ export interface LoginResponse {
     password_change_token?: string;
 }
 
-export interface AdminSession {
+export interface JwtAdminSession {
     type: 'jwt';
     accessToken: string;
     refreshToken: string;
     user?: PlatformUser;
 }
+
+export interface LegacyAdminSession {
+    type: 'legacy';
+    adminToken: string;
+    user?: PlatformUser;
+}
+
+export type AdminSession = JwtAdminSession | LegacyAdminSession;
 
 // Session management
 const ADMIN_SESSION_KEY = 'ritmo_admin_session';
@@ -89,12 +97,21 @@ export function clearAdminSession(): void {
 export function isAdminAuthenticated(): boolean {
     const session = getAdminSession();
     if (!session) return false;
-    return session.type === 'jwt' && !!session.accessToken;
+    if (session.type === 'jwt') {
+        return !!session.accessToken;
+    }
+    return !!session.adminToken;
 }
 
 export function getAdminUser(): PlatformUser | null {
     const session = getAdminSession();
     return session?.user || null;
+}
+
+export function setLegacyAdminSession(adminToken: string): void {
+    const token = String(adminToken || '').trim();
+    if (!token) return;
+    setAdminSession({ type: 'legacy', adminToken: token });
 }
 
 // Auth functions
@@ -169,7 +186,7 @@ export async function changePasswordForced(passwordChangeToken: string, newPassw
 
 async function fetchCurrentUser(): Promise<PlatformUser> {
     const session = getAdminSession();
-    if (!session?.accessToken) throw new Error('Not authenticated');
+    if (!session || session.type !== 'jwt' || !session.accessToken) throw new Error('Not authenticated');
 
     const response = await fetch(`${API_BASE_URL}/api/v1/platform-auth/me`, {
         headers: {
@@ -183,7 +200,7 @@ async function fetchCurrentUser(): Promise<PlatformUser> {
 
 export async function refreshTokens(): Promise<boolean> {
     const session = getAdminSession();
-    if (session?.type !== 'jwt' || !session.refreshToken) return false;
+    if (!session || session.type !== 'jwt' || !session.refreshToken) return false;
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/platform-auth/refresh`, {
@@ -251,7 +268,11 @@ export async function adminRequest<T>(
         'Content-Type': 'application/json',
     };
 
-    headers['Authorization'] = `Bearer ${session.accessToken}`;
+    if (session.type === 'jwt') {
+        headers['Authorization'] = `Bearer ${session.accessToken}`;
+    } else {
+        headers['X-Admin-Token'] = session.adminToken;
+    }
 
     const requestOptions: RequestInit = {
         method,
@@ -265,11 +286,11 @@ export async function adminRequest<T>(
     let response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
 
     // Try token refresh on 401
-    if (response.status === 401) {
+    if (response.status === 401 && session.type === 'jwt') {
         const refreshed = await refreshTokens();
         if (refreshed) {
             const newSession = getAdminSession();
-            if (newSession?.accessToken) {
+            if (newSession?.type === 'jwt' && newSession.accessToken) {
                 headers['Authorization'] = `Bearer ${newSession.accessToken}`;
                 response = await fetch(`${API_BASE_URL}${endpoint}`, { ...requestOptions, headers });
             }
