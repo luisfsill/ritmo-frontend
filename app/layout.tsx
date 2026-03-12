@@ -9,6 +9,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: 'Ritmo - Agendamento Inteligente via WhatsApp',
   description: 'Automatize agendamentos do seu negócio com IA conversacional no WhatsApp. Reduza no-shows, gerencie sua equipe e aumente receita.',
   keywords: [

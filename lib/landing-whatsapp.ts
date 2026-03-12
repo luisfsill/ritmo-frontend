@@ -3,7 +3,7 @@ export type LandingWhatsappResult = {
   isFallback: boolean;
 };
 
-const FALLBACK_NUMBER = '5537999216351';
+const FALLBACK_NUMBER = '5537999834149';
 
 function sanitizeWhatsappNumber(number: string | undefined): string {
   if (!number) return '';

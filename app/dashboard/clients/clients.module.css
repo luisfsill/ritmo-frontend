@@ -84,6 +84,24 @@
     margin-top: calc(var(--space-3) * -1);
 }
 
+.bulkBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(239, 68, 68, 0.18);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.bulkActions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
 .activeFilterText {
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
@@ -115,6 +133,10 @@
 
     .searchWrapper {
         max-width: none;
+    }
+
+    .bulkBar {
+        align-items: stretch;
     }
 }
 
@@ -168,6 +190,18 @@
     width: 100%;
     border-collapse: collapse;
     min-width: 600px;
+}
+
+.checkboxColumn {
+    width: 48px;
+}
+
+.checkboxColumn input,
+.mobileCheckbox input,
+.mobileSelectAll input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-accent);
 }
 
 .table th {
@@ -336,6 +370,19 @@
     display: none;
     flex-direction: column;
     gap: var(--space-3);
+}
+
+.mobileSelectAll {
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-secondary);
+}
+
+.mobileSelectAll label,
+.mobileCheckbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
 }
 
 @media (max-width: 768px) {

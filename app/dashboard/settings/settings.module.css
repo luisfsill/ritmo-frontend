@@ -1165,6 +1165,32 @@
     margin: 0;
 }
 
+.wizardFieldMeta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.wizardCounter {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+}
+
+.wizardCounterWarning {
+    color: var(--color-warning, #f59e0b);
+}
+
+.wizardCounterError {
+    color: var(--color-error, #ef4444);
+}
+
+.wizardTextareaError {
+    border-color: var(--color-error, #ef4444);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
 .wizardToneGrid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { api, setTokens, clearTokens, isAuthenticated, TokenPair, ApiError, logoutSession } from '@/lib/api';
+import { clearCatalogCache } from '@/lib/catalog';
 
 interface User {
     id: string;
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const previousTenantIdRef = useRef<string | null>(null);
 
     // Buscar dados completos do usuário do endpoint /me
     const fetchUserFromApi = async (): Promise<User | null> => {
@@ -143,6 +145,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     if (!isDemoMode) {
                         // Token inválido, limpar
                         clearTokens();
+                        clearCatalogCache();
                     } else {
                         // Modo demo - criar usuário fake
                         setUser({
@@ -166,6 +169,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         setError(null);
+        clearCatalogCache();
 
         try {
             // Fazer login e obter tokens
@@ -184,6 +188,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 } else {
                     // Último fallback: usar dados básicos do email
                     clearTokens();
+                    clearCatalogCache();
                     throw new Error('Nao foi possivel validar a sessao apos o login. Tente novamente.');
                 }
             }
@@ -209,6 +214,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const logout = async () => {
         await logoutSession();
+        clearCatalogCache();
         setUser(null);
         setError(null);
     };
@@ -216,9 +222,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const refreshUser = async () => {
         const apiUser = await fetchUserFromApi();
         if (apiUser) {
+            clearCatalogCache();
             setUser(apiUser);
         }
     };
+
+    useEffect(() => {
+        const tenantId = user?.tenant_id || null;
+        if (previousTenantIdRef.current !== tenantId) {
+            clearCatalogCache();
+            previousTenantIdRef.current = tenantId;
+        }
+    }, [user?.tenant_id]);
 
     return (
         <AuthContext.Provider

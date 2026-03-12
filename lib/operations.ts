@@ -20,8 +20,9 @@ interface TenantProfile {
   address: Record<string, unknown> | null;
 }
 
-interface TenantSettingsResponse {
+interface TenantPreferencesResponse {
   settings: Record<string, unknown>;
+  feature_flags: FeatureFlagState[];
 }
 
 export async function getBillingUsage(): Promise<BillingUsageSnapshot> {
@@ -29,28 +30,17 @@ export async function getBillingUsage(): Promise<BillingUsageSnapshot> {
 }
 
 export async function getFeatureFlags(): Promise<FeatureFlagState[]> {
-  const [profile, settings] = await Promise.all([
+  const [profile, preferences] = await Promise.all([
     api.get<TenantProfile>('/api/v1/tenants/profile'),
-    api.get<TenantSettingsResponse>('/api/v1/catalog').catch(() => ({ settings: {} })),
+    api.get<TenantPreferencesResponse>('/api/v1/tenants/preferences').catch(() => ({
+      settings: {},
+      feature_flags: [],
+    })),
   ]);
-  const tenantSettings: Record<string, unknown> = (settings?.settings || {}) as Record<string, unknown>;
-  const flags: FeatureFlagState[] = [
-    { key: 'enable_waitlist', enabled: Boolean(tenantSettings['enable_waitlist']), source: 'tenant_settings' },
-    {
-      key: 'enable_proactive_reschedule',
-      enabled: Boolean(tenantSettings['enable_proactive_reschedule']),
-      source: 'tenant_settings',
-    },
-    {
-      key: 'enable_broadcast_offers',
-      enabled: Boolean(tenantSettings['enable_broadcast_offers']),
-      source: 'tenant_settings',
-    },
-  ];
   if (!profile.slug) {
     return [];
   }
-  return flags;
+  return Array.isArray(preferences?.feature_flags) ? preferences.feature_flags : [];
 }
 
 export async function listFrontCommandLogs(limit = 40, status?: string) {

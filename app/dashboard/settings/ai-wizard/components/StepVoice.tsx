@@ -1,6 +1,8 @@
 import styles from '../../settings.module.css';
 import type { AiWizardVoiceStep } from '../types';
 
+const OPERATIONAL_RULES_MAX_LENGTH = 300;
+
 interface StepVoiceProps {
     voice: AiWizardVoiceStep;
     errors: {
@@ -14,9 +16,9 @@ const toneOptions: Array<{
     label: string;
     description: string;
 }> = [
-    { value: 'friendly', label: 'Amigável', description: 'Caloroso e acolhedor para atendimento próximo.' },
-    { value: 'professional', label: 'Profissional', description: 'Formal e objetivo para comunicação corporativa.' },
-    { value: 'casual', label: 'Casual', description: 'Leve e moderno para conversa descontraída.' },
+    { value: 'friendly', label: 'Amigavel', description: 'Caloroso e acolhedor para atendimento proximo.' },
+    { value: 'professional', label: 'Profissional', description: 'Formal e objetivo para comunicacao corporativa.' },
+    { value: 'casual', label: 'Casual', description: 'Leve e moderno para conversa descontraida.' },
 ];
 
 const objectiveOptions: Array<{
@@ -25,15 +27,19 @@ const objectiveOptions: Array<{
     description: string;
 }> = [
     { value: 'short', label: 'Respostas curtas', description: 'Vai direto ao ponto em poucas linhas.' },
-    { value: 'normal', label: 'Respostas completas', description: 'Explica com mais contexto quando necessário.' },
+    { value: 'normal', label: 'Respostas completas', description: 'Explica com mais contexto quando necessario.' },
 ];
 
 export function StepVoice({ voice, errors, onChange }: StepVoiceProps) {
+    const operationalRulesLength = voice.operationalRules.length;
+    const isNearLimit = operationalRulesLength >= OPERATIONAL_RULES_MAX_LENGTH - 30;
+    const isAtLimit = operationalRulesLength >= OPERATIONAL_RULES_MAX_LENGTH;
+
     return (
         <div className={styles.wizardStepContent}>
             <h3 className={styles.aiSubtitle}>Como o agente responde</h3>
             <p className={styles.aiHelp}>
-                Defina o estilo de comunicação para o agente manter consistência no atendimento.
+                Defina o estilo de comunicacao para o agente manter consistencia no atendimento.
             </p>
 
             <div className={styles.wizardToneGrid}>
@@ -70,15 +76,25 @@ export function StepVoice({ voice, errors, onChange }: StepVoiceProps) {
                 </label>
                 <textarea
                     id="wizard-operational-rules"
-                    className={styles.wizardTextarea}
+                    className={`${styles.wizardTextarea} ${isAtLimit ? styles.wizardTextareaError : ''}`}
                     value={voice.operationalRules}
                     onChange={(e) => onChange('operationalRules', e.target.value)}
-                    placeholder="Ex: Confirmar disponibilidade antes de fechar o horário e pedir confirmação do serviço escolhido."
+                    placeholder="Ex: Confirmar disponibilidade antes de fechar o horario e pedir confirmacao do servico escolhido."
                     rows={5}
+                    maxLength={OPERATIONAL_RULES_MAX_LENGTH}
                 />
+                <div className={styles.wizardFieldMeta}>
+                    <p className={styles.wizardHint}>
+                        Escreva instrucoes simples. O limite evita prompts longos e dificeis de manter.
+                    </p>
+                    <span
+                        className={`${styles.wizardCounter} ${isNearLimit ? styles.wizardCounterWarning : ''} ${isAtLimit ? styles.wizardCounterError : ''}`}
+                    >
+                        {operationalRulesLength}/{OPERATIONAL_RULES_MAX_LENGTH}
+                    </span>
+                </div>
                 {errors.operationalRules && <p className={styles.wizardError}>{errors.operationalRules}</p>}
             </div>
         </div>
     );
 }
-

@@ -6,6 +6,10 @@ import { Button, Input, useToast } from '@/components/ui';
 import { emergencyApi, EmergencyIncident } from '@/lib/emergency';
 import styles from './emergency.module.css';
 
+async function fetchIncidents() {
+  return emergencyApi.listIncidents();
+}
+
 export default function EmergencyPage() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -18,10 +22,38 @@ export default function EmergencyPage() {
     dispatch: true,
   });
 
-  const loadData = async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchIncidents();
+        if (!cancelled) {
+          setIncidents(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          showToast('Falha ao carregar incidentes.', 'error');
+          console.error(error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast]);
+
+  const handleRefresh = async () => {
     setLoading(true);
     try {
-      const data = await emergencyApi.listIncidents();
+      const data = await fetchIncidents();
       setIncidents(data);
     } catch (error) {
       showToast('Falha ao carregar incidentes.', 'error');
@@ -30,10 +62,6 @@ export default function EmergencyPage() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    void loadData();
-  }, []);
 
   const handleCreateIncident = async () => {
     setSubmitting(true);
@@ -44,7 +72,7 @@ export default function EmergencyPage() {
       });
       showToast('Incidente aberto.', 'success');
       setForm({ severity: 'critical', title: '', message: '', dispatch: true });
-      await loadData();
+      await handleRefresh();
     } catch (error) {
       showToast('Nao foi possivel abrir o incidente.', 'error');
       console.error(error);
@@ -57,7 +85,7 @@ export default function EmergencyPage() {
     try {
       await emergencyApi.resolveIncident(incidentId);
       showToast('Incidente resolvido.', 'success');
-      await loadData();
+      await handleRefresh();
     } catch (error) {
       showToast('Falha ao resolver incidente.', 'error');
       console.error(error);
@@ -68,7 +96,7 @@ export default function EmergencyPage() {
     try {
       const result = await emergencyApi.testDispatch(incidentId);
       showToast(`Disparo concluido: ${result.queued} enfileirados, ${result.skipped} ignorados.`, 'success');
-      await loadData();
+      await handleRefresh();
     } catch (error) {
       showToast('Falha ao disparar emergencia.', 'error');
       console.error(error);

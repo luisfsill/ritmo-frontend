@@ -19,12 +19,6 @@
     margin-bottom: var(--space-1);
 }
 
-@media (max-width: 480px) {
-    .title {
-        font-size: var(--text-2xl);
-    }
-}
-
 .subtitle {
     font-size: var(--text-base);
     color: var(--color-text-secondary);
@@ -38,55 +32,9 @@
     flex-wrap: wrap;
 }
 
-@media (max-width: 640px) {
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
-
-.searchWrapper {
-    position: relative;
-    flex: 1;
-    max-width: 400px;
-}
-
-@media (max-width: 640px) {
-    .searchWrapper {
-        max-width: none;
-    }
-}
-
-.searchIcon {
-    position: absolute;
-    left: var(--space-3);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-tertiary);
-}
-
-.searchInput {
-    width: 100%;
-    height: 40px;
-    padding: 0 var(--space-4) 0 calc(var(--space-3) + 24px);
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-    background-color: var(--color-bg-secondary);
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
-}
-
-.searchInput:focus {
-    outline: none;
-    background-color: var(--color-bg-primary);
-    border-color: var(--color-accent);
-}
-
 .count {
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
-    white-space: nowrap;
 }
 
 .tableWrapper {
@@ -99,7 +47,7 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 620px;
+    min-width: 720px;
 }
 
 .table th {
@@ -116,6 +64,7 @@
     font-size: var(--text-sm);
     color: var(--color-text-primary);
     border-top: 1px solid var(--color-border-subtle);
+    vertical-align: top;
 }
 
 .table tr:hover td {
@@ -126,6 +75,11 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
+}
+
+.serviceCell {
+    color: var(--color-text-secondary);
+    line-height: 1.5;
 }
 
 .actions {
@@ -147,18 +101,12 @@
     background-color: var(--color-bg-elevated);
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-xl);
-    transition: all var(--transition-fast);
-}
-
-.card:hover {
-    box-shadow: var(--shadow-md);
 }
 
 .cardHeader {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-3);
-    margin-bottom: var(--space-4);
 }
 
 .avatar {
@@ -172,6 +120,7 @@
     color: white;
     background: linear-gradient(135deg, var(--color-accent) 0%, #6366f1 100%);
     border-radius: var(--radius-full);
+    flex-shrink: 0;
 }
 
 .info {
@@ -183,14 +132,13 @@
     font-size: var(--text-base);
     font-weight: var(--font-semibold);
     color: var(--color-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.role {
+.servicesPreview {
+    margin: var(--space-1) 0 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+    line-height: 1.5;
 }
 
 .status {
@@ -210,31 +158,10 @@
     background-color: var(--color-bg-secondary);
 }
 
-.cardBody {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.contactItem {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-}
-
-.contactItem svg {
-    color: var(--color-text-tertiary);
-    flex-shrink: 0;
-}
-
 .cardFooter {
     display: flex;
     gap: var(--space-2);
-    padding-top: var(--space-3);
+    padding-top: var(--space-4);
     margin-left: auto;
 }
 
@@ -262,16 +189,6 @@
     color: var(--color-error);
 }
 
-@media (max-width: 768px) {
-    .tableWrapper {
-        display: none;
-    }
-
-    .mobileList {
-        display: flex;
-    }
-}
-
 .loadingState,
 .errorState,
 .emptyState {
@@ -295,23 +212,17 @@
 }
 
 .emptyIcon {
-    font-size: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    font-weight: var(--font-bold);
+    border-radius: var(--radius-full);
+    color: var(--color-accent);
+    background: var(--color-accent-subtle);
 }
 
-.emptyState h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    color: var(--color-text-primary);
-}
-
-.emptyState p,
-.loadingState span,
-.errorState p {
-    font-size: var(--text-base);
-    color: var(--color-text-secondary);
-}
-
-/* Form Styles */
 .form {
     display: flex;
     flex-direction: column;
@@ -330,6 +241,50 @@
     color: var(--color-text-primary);
 }
 
+.serviceChecklist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-secondary);
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.serviceOption {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+}
+
+.serviceOptionText {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.serviceOptionMeta {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+
+.serviceOption input[type="checkbox"],
+.checkboxLabel input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-accent);
+}
+
+.serviceEmpty {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
 .checkboxLabel {
     display: flex;
     align-items: center;
@@ -339,9 +294,12 @@
     cursor: pointer;
 }
 
-.checkboxLabel input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--color-accent);
-    cursor: pointer;
+@media (max-width: 768px) {
+    .tableWrapper {
+        display: none;
+    }
+
+    .mobileList {
+        display: flex;
+    }
 }

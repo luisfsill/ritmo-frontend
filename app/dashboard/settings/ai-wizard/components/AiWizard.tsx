@@ -38,6 +38,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 };
 
 const WIZARD_STEPS: WizardStep[] = [1, 2, 3];
+const OPERATIONAL_RULES_MAX_LENGTH = 300;
 
 function cloneDraft(draft: AiWizardDraftV1): AiWizardDraftV1 {
     return JSON.parse(JSON.stringify(draft)) as AiWizardDraftV1;
@@ -237,6 +238,8 @@ export function AiWizard() {
         const errors: typeof voiceErrors = {};
         if (source.voice.operationalRules.trim().length < 12) {
             errors.operationalRules = 'Descreva regras com pelo menos 12 caracteres.';
+        } else if (source.voice.operationalRules.trim().length > OPERATIONAL_RULES_MAX_LENGTH) {
+            errors.operationalRules = `Use no maximo ${OPERATIONAL_RULES_MAX_LENGTH} caracteres nas regras operacionais.`;
         }
         setVoiceErrors(errors);
         return Object.keys(errors).length === 0;

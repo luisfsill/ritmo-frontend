@@ -48,7 +48,7 @@ type BookingStep = 'services' | 'date' | 'time' | 'form' | 'confirmation';
 
 export default function PublicBookingPage() {
   const params = useParams();
-  const slug = params.slug as string;
+  const slug = typeof params?.slug === 'string' ? params.slug : '';
   const { resolvedTheme, toggleTheme } = useTheme();
 
   // State

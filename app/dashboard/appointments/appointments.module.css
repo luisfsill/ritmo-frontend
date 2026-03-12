@@ -38,12 +38,13 @@
 
 @media (max-width: 640px) {
     .toolbar {
-        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
         gap: var(--space-3);
     }
     
     .toolbar > * {
-        flex: 1 1 calc(50% - var(--space-3) / 2);
+        width: 100%;
         min-width: 0;
     }
 }
@@ -143,19 +144,21 @@
 
 .dateInput {
     height: 40px;
-    padding: 0 var(--space-4);
+    width: 100%;
+    min-width: 170px;
+    padding: 0 calc(var(--space-4) + 18px) 0 var(--space-4);
     font-size: var(--text-sm);
     color: var(--color-text-primary);
     background-color: var(--color-bg-secondary);
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     cursor: pointer;
+    color-scheme: dark;
 }
 
 @media (max-width: 640px) {
     .dateInput {
-        flex: 1;
-        min-width: 120px;
+        min-width: 0;
     }
 }
 

@@ -136,8 +136,10 @@ export default function ClientsPage() {
     const { showToast } = useToast();
     const { confirm: confirmDialog } = useConfirmDialog();
     const [clients, setClients] = useState<Client[]>([]);
+    const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -207,6 +209,10 @@ export default function ClientsPage() {
         void loadClients(true, null, debouncedQuery, segment);
     }, [debouncedQuery, segment, loadClients]);
 
+    useEffect(() => {
+        setSelectedClientIds((current) => current.filter((id) => clients.some((client) => client.id === id)));
+    }, [clients]);
+
     const handleDelete = async (id: string) => {
         const confirmed = await confirmDialog({
             title: 'Excluir cliente',
@@ -224,6 +230,56 @@ export default function ClientsPage() {
         } catch (err) {
             const apiError = err as ApiError;
             showToast(apiError.message || 'Erro ao excluir cliente. Tente novamente.', 'error');
+        }
+    };
+
+    const toggleSelectedClient = (clientId: string) => {
+        setSelectedClientIds((current) =>
+            current.includes(clientId)
+                ? current.filter((id) => id !== clientId)
+                : [...current, clientId],
+        );
+    };
+
+    const allVisibleSelected = clients.length > 0 && clients.every((client) => selectedClientIds.includes(client.id));
+
+    const toggleSelectAllVisible = () => {
+        if (allVisibleSelected) {
+            setSelectedClientIds([]);
+            return;
+        }
+        setSelectedClientIds(clients.map((client) => client.id));
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedClientIds.length === 0) {
+            showToast('Selecione pelo menos um cliente para excluir.', 'error');
+            return;
+        }
+
+        const confirmed = await confirmDialog({
+            title: 'Excluir clientes selecionados',
+            message: `Tem certeza que deseja excluir ${selectedClientIds.length} cliente(s) de uma vez?`,
+            confirmLabel: 'Excluir selecionados',
+            cancelLabel: 'Cancelar',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        setBulkDeleting(true);
+        try {
+            const result = await api.post<{ deleted_count: number }>('/api/v1/clients/bulk-delete', {
+                ids: selectedClientIds,
+                confirm: true,
+            });
+            showToast(`${result.deleted_count} cliente(s) excluÃ­do(s) com sucesso.`, 'success');
+            setSelectedClientIds([]);
+            await loadClients(true, null, debouncedQuery, segment);
+        } catch (err) {
+            const apiError = err as ApiError;
+            showToast(apiError.message || 'Erro ao excluir clientes em massa. Tente novamente.', 'error');
+        } finally {
+            setBulkDeleting(false);
         }
     };
 
@@ -356,6 +412,19 @@ export default function ClientsPage() {
                     </button>
                 </div>
             )}
+            {selectedClientIds.length > 0 && (
+                <div className={styles.bulkBar}>
+                    <span>{selectedClientIds.length} cliente(s) selecionado(s)</span>
+                    <div className={styles.bulkActions}>
+                        <Button variant="secondary" onClick={() => setSelectedClientIds([])} disabled={bulkDeleting}>
+                            Limpar selecao
+                        </Button>
+                        <Button variant="destructive" onClick={() => void handleBulkDelete()} isLoading={bulkDeleting}>
+                            Excluir selecionados
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className={styles.loadingState}>
@@ -387,6 +456,14 @@ export default function ClientsPage() {
                         <table className={styles.table}>
                             <thead>
                                 <tr>
+                                    <th className={styles.checkboxColumn}>
+                                        <input
+                                            type="checkbox"
+                                            checked={allVisibleSelected}
+                                            onChange={toggleSelectAllVisible}
+                                            aria-label="Selecionar todos os clientes visiveis"
+                                        />
+                                    </th>
                                     <th>Nome</th>
                                     <th>Contato</th>
                                     <th>Status</th>
@@ -397,6 +474,14 @@ export default function ClientsPage() {
                             <tbody>
                                 {clients.map((client) => (
                                     <tr key={client.id}>
+                                        <td className={styles.checkboxColumn}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedClientIds.includes(client.id)}
+                                                onChange={() => toggleSelectedClient(client.id)}
+                                                aria-label={`Selecionar ${client.full_name}`}
+                                            />
+                                        </td>
                                         <td>
                                             <div className={styles.clientName}>
                                                 <div className={styles.avatar}>{client.full_name.charAt(0).toUpperCase()}</div>
@@ -451,9 +536,27 @@ export default function ClientsPage() {
                     </div>
 
                     <div className={styles.mobileList}>
+                        <div className={styles.mobileSelectAll}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={allVisibleSelected}
+                                    onChange={toggleSelectAllVisible}
+                                />
+                                <span>Selecionar todos os clientes visiveis</span>
+                            </label>
+                        </div>
                         {clients.map((client) => (
                             <article key={client.id} className={styles.mobileCard}>
                                 <div className={styles.mobileHeader}>
+                                    <label className={styles.mobileCheckbox}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedClientIds.includes(client.id)}
+                                            onChange={() => toggleSelectedClient(client.id)}
+                                            aria-label={`Selecionar ${client.full_name}`}
+                                        />
+                                    </label>
                                     <div className={styles.clientName}>
                                         <div className={styles.avatar}>{client.full_name.charAt(0).toUpperCase()}</div>
                                         <span>{client.full_name}</span>

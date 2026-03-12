@@ -67,6 +67,28 @@
     overflow-y: auto;
 }
 
+.blockedState {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 520px;
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-elevated);
+}
+
+.blockedState h2 {
+    margin: 0;
+    font-size: var(--text-xl);
+    color: var(--color-text-primary);
+}
+
+.blockedState p {
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
 @media (max-width: 768px) {
     .content {
         padding: var(--space-4);

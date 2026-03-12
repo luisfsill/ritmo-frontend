@@ -14,6 +14,22 @@ interface WaitlistItem {
   created_at: string;
 }
 
+async function fetchOperationsSnapshot() {
+  const [usageData, flagsData, logsData, waitlistData] = await Promise.all([
+    getBillingUsage().catch(() => null),
+    getFeatureFlags().catch(() => []),
+    listFrontCommandLogs(30).catch(() => []),
+    api.get<WaitlistItem[]>('/api/v1/waitlist').catch(() => []),
+  ]);
+
+  return {
+    usageData,
+    flagsData,
+    logsData,
+    waitlistData,
+  };
+}
+
 export default function OperationsPage() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -22,19 +38,46 @@ export default function OperationsPage() {
   const [flags, setFlags] = useState<FeatureFlagState[]>([]);
   const [logs, setLogs] = useState<Array<Record<string, unknown>>>([]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        const snapshot = await fetchOperationsSnapshot();
+        if (cancelled) {
+          return;
+        }
+        setUsage(snapshot.usageData);
+        setFlags(snapshot.flagsData);
+        setLogs(snapshot.logsData);
+        setWaitlist(snapshot.waitlistData);
+      } catch (error) {
+        if (!cancelled) {
+          showToast('Falha ao carregar operacoes.', 'error');
+          console.error(error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast]);
+
+  const handleRefresh = async () => {
     setLoading(true);
     try {
-      const [usageData, flagsData, logsData, waitlistData] = await Promise.all([
-        getBillingUsage().catch(() => null),
-        getFeatureFlags().catch(() => []),
-        listFrontCommandLogs(30).catch(() => []),
-        api.get<WaitlistItem[]>('/api/v1/waitlist').catch(() => []),
-      ]);
-      setUsage(usageData);
-      setFlags(flagsData);
-      setLogs(logsData);
-      setWaitlist(waitlistData);
+      const snapshot = await fetchOperationsSnapshot();
+      setUsage(snapshot.usageData);
+      setFlags(snapshot.flagsData);
+      setLogs(snapshot.logsData);
+      setWaitlist(snapshot.waitlistData);
     } catch (error) {
       showToast('Falha ao carregar operacoes.', 'error');
       console.error(error);
@@ -43,10 +86,6 @@ export default function OperationsPage() {
     }
   };
 
-  useEffect(() => {
-    void loadData();
-  }, []);
-
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -54,7 +93,7 @@ export default function OperationsPage() {
           <h1>Operacoes</h1>
           <p>Painel para waitlist/reencaixe, quotas, flags e trilha operacional.</p>
         </div>
-        <Button variant="secondary" onClick={() => void loadData()}>
+        <Button variant="secondary" onClick={() => void handleRefresh()}>
           Atualizar
         </Button>
       </header>

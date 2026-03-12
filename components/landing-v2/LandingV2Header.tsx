@@ -65,6 +65,19 @@ export function LandingV2Header({
         </nav>
 
         <div className={styles.actions}>
+          <Link href={registerHref} className={styles.registerButton} onClick={onDesktopRegisterClick}>
+            Criar conta
+          </Link>
+          <WhatsAppButton
+            href={desktopWhatsappHref}
+            onClick={onDesktopWhatsappClick}
+            className={styles.ctaButton}
+            variant="secondary"
+            size="sm"
+            showArrow
+          >
+            Falar no WhatsApp
+          </WhatsAppButton>
           <Link href="/login" className={styles.loginButton}>
             Entrar
           </Link>
@@ -104,6 +117,18 @@ export function LandingV2Header({
               <a href="#faq" className={styles.mobileLink} onClick={handleMobileNavClick('faq')}>FAQ</a>
             </nav>
             <div className={styles.mobileActions}>
+              <Link href={registerHref} className={styles.mobileRegister} onClick={onMobileRegisterClick}>
+                Criar conta
+              </Link>
+              <WhatsAppButton
+                href={mobileWhatsappHref}
+                onClick={onMobileWhatsappClick}
+                className={styles.mobileCta}
+                variant="secondary"
+                showArrow
+              >
+                Falar no WhatsApp
+              </WhatsAppButton>
               <Link href="/login" className={styles.mobileLogin} onClick={onCloseMobileMenu}>
                 Entrar
               </Link>

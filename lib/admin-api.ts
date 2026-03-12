@@ -76,7 +76,23 @@ export function getAdminSession(): AdminSession | null {
     const data = localStorage.getItem(ADMIN_SESSION_KEY);
     if (!data) return null;
     try {
-        return JSON.parse(data) as AdminSession;
+        const parsed = JSON.parse(data) as Partial<AdminSession> | null;
+        if (!parsed || !parsed.type) {
+            return null;
+        }
+        if (parsed.type === 'jwt') {
+            if (!parsed.accessToken || !parsed.refreshToken) {
+                return null;
+            }
+            return parsed as JwtAdminSession;
+        }
+        if (parsed.type === 'legacy') {
+            if (!parsed.adminToken) {
+                return null;
+            }
+            return parsed as LegacyAdminSession;
+        }
+        return null;
     } catch {
         return null;
     }
@@ -267,7 +283,6 @@ export async function adminRequest<T>(
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
-
     if (session.type === 'jwt') {
         headers['Authorization'] = `Bearer ${session.accessToken}`;
     } else {

@@ -31,7 +31,7 @@
 .modal {
     display: flex;
     flex-direction: column;
-    height: min(calc(100vh - var(--space-8)), 90vh);
+    max-height: min(calc(100vh - var(--space-8)), 90vh);
     overflow: hidden;
     background-color: var(--color-bg-elevated);
     border-radius: var(--radius-xl);
@@ -41,7 +41,8 @@
 
 @media (max-width: 480px) {
     .modal {
-        height: calc(100vh - var(--space-6));
+        width: 100%;
+        max-height: calc(100vh - var(--space-6));
         border-radius: var(--radius-xl) var(--radius-xl) 0 0;
         animation: slideUp 0.2s ease-out;
     }
@@ -127,8 +128,8 @@
 }
 
 .content {
-    height: 0;
     flex-grow: 1;
+    min-height: 0;
     padding: var(--space-5);
     overflow-y: auto;
     overscroll-behavior: contain;

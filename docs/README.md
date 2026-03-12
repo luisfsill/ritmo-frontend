@@ -87,9 +87,9 @@ ritmo-frontend/
 3. **Auto-refresh** em requisições 401
 4. **Tenant Isolation** via `tenant_id` no JWT payload
 
-### Dois Modos de Autenticação
-- **JWT** (Padrão): Email + Password → `access_token` + `refresh_token`
-- **Legacy Token** (Admin): `X-Admin-Token` header (suporte retrospectivo)
+### Autenticação Admin Suportada
+- **Platform JWT Bearer**: Email + Password → `access_token` + `refresh_token`
+- **Admin API**: sempre via `Authorization: Bearer <platform_access_token>`
 
 ---
 

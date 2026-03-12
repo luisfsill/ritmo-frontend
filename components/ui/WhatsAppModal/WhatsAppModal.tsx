@@ -29,10 +29,20 @@ function normalizeError(err: unknown): string {
 }
 
 function humanizeUazapiError(message: string): string {
+  if (message.includes('uazapi_instance_connect_bad_request') || message.includes('uazapi_webhook_registration_invalid')) {
+    return 'A instancia respondeu com configuracao invalida. Revise a conexao e registre o webhook novamente.';
+  }
+  if (message.includes('uazapi_instance_not_found')) {
+    return 'A instancia do WhatsApp nao foi encontrada. Crie uma nova instancia para continuar.';
+  }
+  if (message.includes('uazapi_token_invalid') || message.includes('uazapi_unauthorized')) {
+    return 'A instancia do WhatsApp foi removida ou o token expirou. Crie uma nova instancia para reconectar.';
+  }
   if (
     message.includes('missing webhook connection') ||
     message.includes('invalid webhook connection') ||
-    message.includes('uazapi_connection_not_configured')
+    message.includes('uazapi_connection_not_configured') ||
+    message.includes('uazapi_webhook_connection_invalid')
   ) {
     return 'A autenticação do webhook está inválida. Registre o webhook novamente para gerar uma nova conexão.';
   }
@@ -55,6 +65,9 @@ function humanizeUazapiError(message: string): string {
     message.toLowerCase().includes('limit')
   ) {
     return 'Limite de instâncias atingido no servidor WhatsApp. Entre em contato com o suporte para liberar novas instâncias.';
+  }
+  if (message === 'bad_request' || message.includes('uazapi_webhook_register_bad_request')) {
+    return 'A UAZAPI recusou a operacao atual. Tente registrar a integracao novamente.';
   }
   return message;
 }

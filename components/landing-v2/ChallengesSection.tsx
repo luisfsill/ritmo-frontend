@@ -9,7 +9,6 @@ import {
   MotionArticle,
   MotionDiv,
   MotionSection,
-  RevealOnScroll,
   cardRevealVariantsStrong,
   getDirectionalOffset,
   sectionRevealVariantsStrong,

@@ -3,19 +3,43 @@ name: Frontend Verify
 on:
   push:
     paths:
-      - "ritmo-frontend/**"
+      - "app/**"
+      - "components/**"
+      - "e2e/**"
+      - "lib/**"
+      - "pages/**"
+      - "public/**"
+      - "middleware.ts"
+      - "next.config.*"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "eslint.config.*"
+      - "playwright.config.ts"
       - ".github/workflows/frontend-verify.yml"
   pull_request:
     paths:
-      - "ritmo-frontend/**"
+      - "app/**"
+      - "components/**"
+      - "e2e/**"
+      - "lib/**"
+      - "pages/**"
+      - "public/**"
+      - "middleware.ts"
+      - "next.config.*"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "eslint.config.*"
+      - "playwright.config.ts"
       - ".github/workflows/frontend-verify.yml"
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ritmo-frontend
+    env:
+      NEXT_PUBLIC_RITMO_API_URL: "http://127.0.0.1:65535"
+      NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3000"
 
     steps:
       - name: Checkout
@@ -26,7 +50,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: ritmo-frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -39,3 +63,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright smoke
+        run: npm run test:e2e:smoke

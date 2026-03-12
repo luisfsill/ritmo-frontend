@@ -32,6 +32,15 @@ const initialRule: PricingRuleForm = {
   bonus_cents: 0,
 };
 
+async function fetchPricingSnapshot() {
+  const [rulesData, catalogData] = await Promise.all([
+    pricingApi.listRules(),
+    api.get<CatalogSnapshot>('/api/v1/catalog'),
+  ]);
+
+  return { rulesData, catalogData };
+}
+
 export default function PricingPage() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -53,20 +62,65 @@ export default function PricingPage() {
     return simulation.service_id && simulation.staff_id && simulation.start_at;
   }, [simulation]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        const snapshot = await fetchPricingSnapshot();
+        if (cancelled) {
+          return;
+        }
+        setRules(snapshot.rulesData);
+        setCatalog(snapshot.catalogData);
+        if (snapshot.catalogData.services[0]) {
+          setSimulation((prev) => ({
+            ...prev,
+            service_id: prev.service_id || snapshot.catalogData.services[0].id,
+          }));
+        }
+        if (snapshot.catalogData.staff[0]) {
+          setSimulation((prev) => ({
+            ...prev,
+            staff_id: prev.staff_id || snapshot.catalogData.staff[0].id,
+          }));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          showToast('Falha ao carregar configuracoes de preco dinamico.', 'error');
+          console.error(error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast]);
+
+  const handleRefresh = async () => {
     setLoading(true);
     try {
-      const [rulesData, catalogData] = await Promise.all([
-        pricingApi.listRules(),
-        api.get<CatalogSnapshot>('/api/v1/catalog'),
-      ]);
-      setRules(rulesData);
-      setCatalog(catalogData);
-      if (!simulation.service_id && catalogData.services[0]) {
-        setSimulation((prev) => ({ ...prev, service_id: catalogData.services[0].id }));
+      const snapshot = await fetchPricingSnapshot();
+      setRules(snapshot.rulesData);
+      setCatalog(snapshot.catalogData);
+      if (snapshot.catalogData.services[0]) {
+        setSimulation((prev) => ({
+          ...prev,
+          service_id: prev.service_id || snapshot.catalogData.services[0].id,
+        }));
       }
-      if (!simulation.staff_id && catalogData.staff[0]) {
-        setSimulation((prev) => ({ ...prev, staff_id: catalogData.staff[0].id }));
+      if (snapshot.catalogData.staff[0]) {
+        setSimulation((prev) => ({
+          ...prev,
+          staff_id: prev.staff_id || snapshot.catalogData.staff[0].id,
+        }));
       }
     } catch (error) {
       showToast('Falha ao carregar configuracoes de preco dinamico.', 'error');
@@ -76,17 +130,13 @@ export default function PricingPage() {
     }
   };
 
-  useEffect(() => {
-    void loadData();
-  }, []);
-
   const handleCreateRule = async () => {
     setCreating(true);
     try {
       await pricingApi.createRule(form);
       showToast('Regra de preco criada.', 'success');
       setForm(initialRule);
-      await loadData();
+      await handleRefresh();
     } catch (error) {
       showToast('Nao foi possivel criar a regra.', 'error');
       console.error(error);
@@ -98,7 +148,7 @@ export default function PricingPage() {
   const handleToggleRule = async (rule: PriceRule) => {
     try {
       await pricingApi.updateRule(rule.id, { is_active: !rule.is_active });
-      await loadData();
+      await handleRefresh();
     } catch (error) {
       showToast('Falha ao atualizar regra.', 'error');
       console.error(error);
@@ -139,7 +189,7 @@ export default function PricingPage() {
           <h1>Preco Dinamico</h1>
           <p>Gerencie regras por tenant e simule impacto de descontos e bonus.</p>
         </div>
-        <Button onClick={() => void loadData()} variant="secondary">
+        <Button onClick={() => void handleRefresh()} variant="secondary">
           <RefreshCw size={16} />
           Atualizar
         </Button>

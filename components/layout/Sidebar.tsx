@@ -22,27 +22,29 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getConversationStats } from '@/lib/conversations';
+import { isSystemAdminUser } from '@/lib/system-admin';
 import styles from './Sidebar.module.css';
 
 const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/calendar', label: 'Agenda', icon: Calendar },
     { href: '/dashboard/appointments', label: 'Agendamentos', icon: Clock },
-    { href: '/dashboard/services', label: 'Serviços', icon: Scissors },
+    { href: '/dashboard/services', label: 'Servicos', icon: Scissors },
     { href: '/dashboard/staff', label: 'Equipe', icon: Users },
     { href: '/dashboard/clients', label: 'Clientes', icon: UserCircle },
     { href: '/dashboard/conversations', label: 'Conversas', icon: MessageSquare },
-    { href: '/dashboard/analytics', label: 'Relatórios', icon: BarChart3 },
-    { href: '/dashboard/pricing', label: 'Preço Dinâmico', icon: DollarSign },
-    { href: '/dashboard/emergency', label: 'Emergência', icon: AlertTriangle },
-    { href: '/dashboard/operations', label: 'Operações', icon: Settings2 },
+    { href: '/dashboard/analytics', label: 'Relatorios', icon: BarChart3 },
+];
+
+const systemAdminOnlyMenuItems = [
+    { href: '/dashboard/pricing', label: 'Preco Dinamico', icon: DollarSign },
+    { href: '/dashboard/emergency', label: 'Emergencia', icon: AlertTriangle },
+    { href: '/dashboard/operations', label: 'Operacoes', icon: Settings2 },
 ];
 
 const bottomMenuItems = [
-    { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
+    { href: '/dashboard/settings', label: 'Configuracoes', icon: Settings },
 ];
-
-const SYSTEM_ADMINS = ['admin@admin.com', 'admin@ritmo.com'];
 
 interface SidebarProps {
     isOpen?: boolean;
@@ -51,16 +53,12 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     const pathname = usePathname();
+    const currentPath = pathname || '';
     const router = useRouter();
     const { user, logout } = useAuth();
     const [waitingHumanCount, setWaitingHumanCount] = useState(0);
-
-    const isDev = typeof window !== 'undefined' && (
-        process.env.NODE_ENV === 'development' ||
-        window.location.port === '3000'
-    );
-
-    const isSystemAdmin = isDev || SYSTEM_ADMINS.includes(user?.email || '');
+    const isSystemAdmin = isSystemAdminUser(user);
+    const visibleMenuItems = isSystemAdmin ? [...menuItems, ...systemAdminOnlyMenuItems] : menuItems;
 
     const handleLogout = async () => {
         await logout();
@@ -98,7 +96,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
             <div className={styles.sidebarHeader}>
                 <Link href="/dashboard" className={styles.logo}>
-                    <span className={styles.logoIcon}>📅</span>
+                    <span className={styles.logoIcon}>RT</span>
                     <span className={styles.logoText}>Ritmo</span>
                 </Link>
                 {onClose && (
@@ -110,10 +108,11 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
             <nav className={styles.nav}>
                 <ul className={styles.navList}>
-                    {menuItems.map((item) => {
+                    {visibleMenuItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname === item.href ||
-                            (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                        const isActive =
+                            currentPath === item.href ||
+                            (item.href !== '/dashboard' && currentPath.startsWith(item.href));
                         const showBadge = item.href === '/dashboard/conversations' && waitingHumanCount > 0;
 
                         return (
@@ -153,7 +152,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                     )}
                     {bottomMenuItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname.startsWith(item.href);
+                        const isActive = currentPath.startsWith(item.href);
 
                         return (
                             <li key={item.href}>

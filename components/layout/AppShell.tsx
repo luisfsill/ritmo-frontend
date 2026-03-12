@@ -1,9 +1,11 @@
 'use client';
 
 import { ReactNode, useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { useAuth } from '@/lib/auth-context';
+import { isSystemAdminOnlyRoute, isSystemAdminUser } from '@/lib/system-admin';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -14,13 +16,17 @@ export function AppShell({ children }: AppShellProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [apiBanner, setApiBanner] = useState<{ tone: 'warning' | 'error'; message: string } | null>(null);
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, isLoading } = useAuth();
+    const protectedRoute = isSystemAdminOnlyRoute(pathname);
+    const hasProtectedRouteAccess = isSystemAdminUser(user);
+    const blockedRoute = protectedRoute && !isLoading && !hasProtectedRouteAccess;
+    const holdProtectedRouteRender = protectedRoute && (isLoading || !hasProtectedRouteAccess);
 
-    // Fecha o sidebar ao mudar de página (mobile)
     useEffect(() => {
         setSidebarOpen(false);
     }, [pathname]);
 
-    // Fecha o sidebar ao redimensionar para desktop
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth > 768) {
@@ -31,7 +37,6 @@ export function AppShell({ children }: AppShellProps) {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Previne scroll do body quando sidebar está aberto em mobile
     useEffect(() => {
         if (sidebarOpen) {
             document.body.style.overflow = 'hidden';
@@ -61,14 +66,14 @@ export function AppShell({ children }: AppShellProps) {
                     message:
                         detail.retryAfterSeconds && detail.retryAfterSeconds > 0
                             ? `Limite de uso temporario. Tente novamente em ${detail.retryAfterSeconds}s.`
-                            : (detail.message || 'Limite de requisições atingido.'),
+                            : (detail.message || 'Limite de requisicoes atingido.'),
                 });
                 return;
             }
             if (detail.status === 'degraded') {
                 setApiBanner({
                     tone: 'error',
-                    message: detail.message || 'Serviço em degradação. Alguns recursos podem falhar.',
+                    message: detail.message || 'Servico em degradacao. Alguns recursos podem falhar.',
                 });
             }
         };
@@ -78,19 +83,43 @@ export function AppShell({ children }: AppShellProps) {
         };
     }, []);
 
+    useEffect(() => {
+        if (blockedRoute) {
+            router.replace('/dashboard');
+        }
+    }, [blockedRoute, router]);
+
+    let content = children;
+    if (protectedRoute && isLoading) {
+        content = (
+            <div className={styles.blockedState}>
+                <h2>Validando acesso</h2>
+                <p>Carregando permissoes do usuario.</p>
+            </div>
+        );
+    } else if (blockedRoute) {
+        content = (
+            <div className={styles.blockedState}>
+                <h2>Acesso restrito</h2>
+                <p>Este modulo esta disponivel apenas para administradores autorizados da plataforma.</p>
+            </div>
+        );
+    } else if (holdProtectedRouteRender) {
+        content = null;
+    }
+
     return (
         <div className={styles.appShell}>
-            {/* Overlay para fechar sidebar em mobile */}
             {sidebarOpen && (
-                <div 
-                    className={styles.overlay} 
+                <div
+                    className={styles.overlay}
                     onClick={() => setSidebarOpen(false)}
                     aria-hidden="true"
                 />
             )}
-            
+
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            
+
             <div className={styles.mainArea}>
                 <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
                 {apiBanner && (
@@ -98,9 +127,7 @@ export function AppShell({ children }: AppShellProps) {
                         {apiBanner.message}
                     </div>
                 )}
-                <main className={styles.content}>
-                    {children}
-                </main>
+                <main className={styles.content}>{content}</main>
             </div>
         </div>
     );
